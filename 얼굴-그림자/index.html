@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>카드뉴스 — 애니풍 얼굴 그림자 (하이파이 러시 threshold map)</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap">
+<style>
+html, body { margin: 0; padding: 0; background: #D9D4C8; }
+body { display: flex; flex-direction: column; align-items: center; gap: 40px; padding: 40px 0; }
+body.single { padding: 0; gap: 0; }
+body.single .slide { display: none; }
+body.single .slide.on { display: flex; }
+
+.slide {
+  width: 1080px; height: 1350px; box-sizing: border-box; flex: none;
+  padding: 60px 64px 44px; display: flex; flex-direction: column;
+  position: relative; overflow: hidden;
+  background: #F6F3EC; color: #17181C;
+  font-family: 'Noto Sans KR', 'Malgun Gothic', sans-serif;
+}
+.tag { align-self: flex-start; font-size: 26px; font-weight: 700; color: #F6F3EC; background: #17181C; border-radius: 999px; padding: 6px 22px; }
+.tag b { color: #FFD43B; margin-right: 10px; }
+.head { margin-top: 22px; font-size: 70px; font-weight: 900; line-height: 1.22; letter-spacing: -0.02em; }
+c { color: #E8590C; }
+.stage { margin-top: 28px; flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; }
+.stage svg { width: 952px; height: auto; max-height: 100%; display: block; border-radius: 28px; }
+.band { margin-top: 26px; background: #17181C; color: #F1F3F8; border-radius: 26px; padding: 30px 38px; font-size: 34px; line-height: 1.55; font-weight: 500; word-break: keep-all; }
+.band y { color: #FFD43B; font-weight: 700; }
+.band p2 { color: #FF6B9A; font-weight: 700; }
+.band small { display: block; margin-top: 10px; font-size: 24px; color: #8D94A8; }
+.foot { margin-top: 20px; display: flex; justify-content: space-between; gap: 24px; font-size: 24px; color: #6B6A66; font-weight: 500; }
+.foot .pg { font-weight: 900; color: #17181C; flex: none; }
+
+/* 표지(1장): 장면을 꽉 채우고 아래에 큰 제목 */
+.slide.cover { padding: 0; background-color: #1B1F2D; color: #F6F3EC;
+  background-image: linear-gradient(#232838 2px, transparent 2px), linear-gradient(90deg, #232838 2px, transparent 2px);
+  background-size: 63.5px 63.5px; background-position: -1px -1px; }
+.cv-scene { position: absolute; left: 0; top: 200px; width: 1080px; height: auto; display: block; }
+.slide.cover::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 640px;
+  background: linear-gradient(to bottom, rgba(18,20,28,0) 0%, rgba(18,20,28,.86) 34%, #12141C 58%); }
+.cv-top { position: relative; z-index: 2; display: flex; justify-content: space-between; align-items: center; padding: 56px 64px 0; }
+.cv-brand { display: flex; align-items: center; font-size: 34px; font-weight: 900; }
+.cv-brand span { font-size: 24px; font-weight: 700; color: #B9BFCE; margin-left: 18px; padding-left: 18px; border-left: 3px solid #4A5068; letter-spacing: .04em; }
+.cv-pg { font-size: 24px; font-weight: 900; color: #17181C; background: #F6F3EC; border-radius: 999px; padding: 6px 18px; }
+.cv-game { position: relative; z-index: 2; margin: 30px 64px 0; font-size: 64px; font-weight: 900; letter-spacing: -0.01em; }
+.cv-chip { position: relative; z-index: 2; align-self: flex-start; margin: 18px 64px 0; font-size: 26px; font-weight: 700; color: #17181C; background: #F6F3EC; border-radius: 10px; padding: 6px 16px; }
+.cv-bottom { position: absolute; z-index: 2; left: 64px; right: 64px; bottom: 58px; }
+.cv-head { font-size: 92px; font-weight: 900; line-height: 1.18; letter-spacing: -0.025em; color: #FFFFFF; }
+.cv-head c { color: #FF7A33; }
+.cv-sub { margin-top: 26px; font-size: 34px; line-height: 1.5; font-weight: 500; color: #D5D9E3; }
+.cv-src { margin-top: 22px; font-size: 22px; color: #8D94A8; }
+
+.code { font-family: Consolas, 'D2Coding', monospace; font-size: 24px; line-height: 1.5; color: #C9CEDB; margin-bottom: 12px; }
+.code .hl { display: block; background: #3A3213; color: #FFE58A; margin: 4px -14px; padding: 2px 14px; border-radius: 8px; }
+.code .c { color: #6E768C; }
+
+.nums { margin-top: 30px; flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-content: start; }
+.num { background: #FFFFFF; border: 3px solid #17181C; border-radius: 22px; padding: 24px 28px; }
+.num b { display: block; font-size: 72px; font-weight: 900; color: #E8590C; line-height: 1.1; }
+.num span { display: block; font-size: 30px; font-weight: 700; margin-top: 6px; }
+.num i { display: block; font-style: normal; font-size: 23px; color: #6B6A66; margin-top: 4px; }
+
+.sum { margin: 30px 0 0; padding: 0; list-style: none; counter-reset: n; flex: 1; }
+.sum li { counter-increment: n; display: flex; align-items: center; gap: 22px; background: #FFFFFF; border: 3px solid #17181C; border-radius: 22px; padding: 40px 30px; margin-bottom: 24px; font-size: 38px; font-weight: 700; }
+.sum li::before { content: counter(n); flex: none; width: 56px; height: 56px; border-radius: 50%; background: #17181C; color: #FFD43B; font-weight: 900; display: flex; align-items: center; justify-content: center; }
+.sum li c { font-weight: 900; }
+.sum li i { margin-left: auto; font-style: normal; font-size: 24px; color: #6B6A66; font-weight: 500; }
+</style>
+</head>
+<body>
+
+<section class="slide cover">
+  <svg class="cv-scene" data-scene="cover"></svg>
+  <div class="cv-top">
+    <div class="cv-brand"><b>게임 기법</b><span>렌더링</span></div>
+    <div class="cv-pg pg"></div>
+  </div>
+  <div class="cv-game">Hi-Fi RUSH</div>
+  <div class="cv-chip">애니풍 얼굴 그림자 · threshold map</div>
+  <div class="cv-bottom">
+    <div class="cv-head">이 얼굴 그림자,<br><c>빛을 계산</c>하지 않아요</div>
+    <div class="cv-sub">빛이 돈 각도에 맞춰 미리 그려 둔<br>그림자 모양을 골라 쓰는 이야기예요.</div>
+    <div class="cv-src">자료: 하이파이 러시 GDC 2024 발표 [41:36]~[51:12]</div>
+  </div>
+</section>
+
+<section class="slide">
+  <div class="tag"><b>02</b>문제</div>
+  <div class="head">얼굴에 셀 셰이딩을<br>쓰면 <c>얼룩</c>이 져요</div>
+  <div class="stage"><svg data-scene="blotch"></svg></div>
+  <div class="band">몸은 법선과 빛의 내적(NdotL)을 기준값과 비교해 그늘을 정해요. 얼굴에 같은 계산을 쓰면 메시를 나눈 모양을 따라 경계가 <p2>지저분해져요</p2>.</div>
+  <div class="foot"><span>하이파이 러시 GDC 2024 [42:09]~[43:09] · 그림은 직접 그렸어요</span><span class="pg"></span></div>
+</section>
+
+<section class="slide">
+  <div class="tag"><b>03</b>방법 비교</div>
+  <div class="head">법선을 고쳐도<br><c>세 가지</c>가 남아요</div>
+  <div class="stage"><svg data-scene="table"></svg></div>
+  <div class="band">곡선이 매끈하지 않고, 표정에 본이 돌면 모양이 깨지고, 손으로 맞추기도 어려워요. 노멀맵은 <y>첫 번째</y>만 풀어요.</div>
+  <div class="foot"><span>하이파이 러시 GDC 2024 [43:09]~[50:40]</span><span class="pg"></span></div>
+</section>
+
+<section class="slide">
+  <div class="tag"><b>04</b>해법 threshold map</div>
+  <div class="head">빛 각도마다<br><c>그늘 자리</c>를 적어 둬요</div>
+  <div class="stage"><svg data-scene="map"></svg></div>
+  <div class="band">얼굴 픽셀마다 빛이 몇 도 돌면 그늘이 되는지 텍스처 한 장에 적어 둬요. 하이파이 러시는 이 텍스처를 <y>threshold map</y>이라고 불렀어요.</div>
+  <div class="foot"><span>하이파이 러시 GDC 2024 [44:44]~[45:47]</span><span class="pg"></span></div>
+</section>
+
+<section class="slide">
+  <div class="tag"><b>05</b>원리</div>
+  <div class="head">셰이더는 각도와<br><c>텍스처 값</c>만 비교해요</div>
+  <div class="stage"><svg data-scene="angle"></svg></div>
+  <div class="band"><div class="code"><span class="c">// 머리 본 기준, 빛 방향의 수평 성분만</span><br>t = acos(dot(L, 머리앞)) / π <span class="c">// 0 ~ 1</span><br>if (dot(L, 머리오른쪽) &lt; 0) u = 1 - u<span class="hl">그늘 = 맵(u, v) 값과 t 비교</span></div>빛이 얼굴 왼쪽에 있으면 맵을 <y>좌우로 뒤집어</y> 읽어요.</div>
+  <div class="foot"><span>의사코드는 발표 설명을 옮긴 것이에요(발표 원문 코드가 아니에요) [45:14]~[46:24]</span><span class="pg"></span></div>
+</section>
+
+<section class="slide">
+  <div class="tag"><b>06</b>만드는 순서</div>
+  <div class="head">36장을 굽고<br><c>한 장</c>으로 합쳐요</div>
+  <div class="stage"><svg data-scene="make"></svg></div>
+  <div class="band">빛을 180° 범위에서 5°씩 돌려 그림자 36장을 굽고, 아티스트가 장마다 다듬은 뒤 사내 도구가 <y>거리장 보간</y>으로 합쳐요.</div>
+  <div class="foot"><span>하이파이 러시 GDC 2024 [47:27]~[48:34]</span><span class="pg"></span></div>
+</section>
+
+<section class="slide">
+  <div class="tag"><b>07</b>발표에서 밝힌 값</div>
+  <div class="head">발표에 나온<br><c>숫자</c>예요</div>
+  <div class="nums">
+    <div class="num"><b>180°</b><span>빛을 돌린 범위</span><i>[47:27]</i></div>
+    <div class="num"><b>5°</b><span>굽는 간격</span><i>[47:27]</i></div>
+    <div class="num"><b>36장</b><span>구운 그림자 수</span><i>[47:27]</i></div>
+    <div class="num"><b>2K</b><span>맵 해상도</span><i>[49:37]</i></div>
+  </div>
+  <div class="band">모양이 UV에 붙어 있어서 표정으로 본이 돌아도 <y>깨지지 않아요</y>. 대신 빛의 수평 성분만 봐서 그림자도 <p2>수평으로만</p2> 움직여요.</div>
+  <div class="foot"><span>하이파이 러시 GDC 2024 [46:24] [49:37] [50:08]</span><span class="pg"></span></div>
+</section>
+
+<section class="slide">
+  <div class="tag"><b>08</b>정리</div>
+  <div class="head">한 장으로<br><c>정리</c>해요</div>
+  <ol class="sum">
+    <li><span><c>각도만</c> 구해 0~1 값으로</span><i>셰이더</i></li>
+    <li><span><c>맵 값</c>과 비교해 그늘을</span><i>threshold map</i></li>
+    <li><span><c>36장</c>을 다듬어 한 장으로</span><i>만들기</i></li>
+  </ol>
+  <div class="band">몸은 보통 셀 셰이딩 그대로 두고 <y>얼굴만</y> 이 방식으로 그려요.<small>빛이 위아래로 움직이는 변화는 이 맵에 담기지 않아요</small></div>
+  <div class="foot"><span>출처: 「3D Toon Rendering in 'Hi-Fi RUSH'」 GDC 2024 (Tango Gameworks)</span><span class="pg"></span></div>
+</section>
+
+<script>
+(function () {
+  var NS = 'http://www.w3.org/2000/svg';
+  var C = { bg: '#1B1F2D', grid: '#232838', skin: '#F4D9C6', shade: '#A9798A', hair: '#3A4062', hairHi: '#59628C', eye: '#232740',
+            y: '#FFD43B', p: '#FF6B9A', txt: '#F1F3F8', dim: '#8D94A8', red: '#FF5A5A', line: '#E8590C' };
+  var uid = 0;
+  function el(tag, a, parent, text) { var e = document.createElementNS(NS, tag); for (var k in a) e.setAttribute(k, a[k]); if (text != null) e.textContent = text; if (parent) parent.appendChild(e); return e; }
+  function base(svg, h) {
+    svg.setAttribute('viewBox', '0 0 952 ' + h);
+    el('rect', { x: 0, y: 0, width: 952, height: h, rx: 28, fill: C.bg }, svg);
+    for (var x = 56; x < 952; x += 56) el('line', { x1: x, y1: 0, x2: x, y2: h, stroke: C.grid, 'stroke-width': 2 }, svg);
+    for (var y = 56; y < h; y += 56) el('line', { x1: 0, y1: y, x2: 952, y2: y, stroke: C.grid, 'stroke-width': 2 }, svg);
+  }
+  function label(svg, x, y, t, col, size, anchor, weight) { return el('text', { x: x, y: y, 'text-anchor': anchor || 'middle', 'font-size': size || 28, 'font-weight': weight || 700, fill: col || C.txt, 'font-family': 'Noto Sans KR' }, svg, t); }
+
+  // 그늘 모양: 경계 x 위치 dx만 바꿔 같은 곡선(코 옆을 따라 내려오는 한 덩어리)을 옮긴다
+  function cleanShadow(dx) {
+    return 'M' + (dx + 18) + ' -210 C' + (dx + 46) + ' -70 ' + (dx + 4) + ' 20 ' + (dx + 26) + ' 70 C' + (dx + 48) + ' 118 ' + (dx + 30) + ' 150 ' + (dx + 16) + ' 210 L 130 210 L 130 -210 Z';
+  }
+  var BLOTCH = ['M 34 -160 L 66 -96 L 30 -48 L 74 2 L 20 46 L 62 86 L 26 132 L 50 170 L 130 170 L 130 -160 Z',
+                'M -6 30 L 14 22 L 22 52 L 4 66 Z', 'M -70 30 L -40 22 L -30 40 L -62 50 Z', 'M -40 104 L -18 96 L -12 118 L -34 124 Z', 'M -96 -40 L -78 -52 L -70 -30 Z'];
+  // 얼굴: 중심 (cx, cy), 크기 s. shade: 'clean'(dx) | 'blotch' | null
+  function face(svg, cx, cy, s, shade, dx) {
+    var g = el('g', { transform: 'translate(' + cx + ' ' + cy + ') scale(' + s + ')' }, svg);
+    var id = 'fc' + (++uid);
+    var cp = el('clipPath', { id: id }, el('defs', {}, g));
+    el('ellipse', { cx: 0, cy: 0, rx: 120, ry: 152 }, cp);
+    el('ellipse', { cx: 0, cy: 0, rx: 120, ry: 152, fill: C.skin }, g);
+    var sg = el('g', { 'clip-path': 'url(#' + id + ')' }, g);
+    if (shade === 'clean') el('path', { d: cleanShadow(dx || 0), fill: C.shade }, sg);
+    if (shade === 'blotch') BLOTCH.forEach(function (d) { el('path', { d: d, fill: C.shade }, sg); });
+    el('ellipse', { cx: -46, cy: 6, rx: 15, ry: 22, fill: C.eye }, g); el('ellipse', { cx: 46, cy: 6, rx: 15, ry: 22, fill: C.eye }, g);
+    el('circle', { cx: -41, cy: -2, r: 5, fill: '#FFFFFF' }, g); el('circle', { cx: 51, cy: -2, r: 5, fill: '#FFFFFF' }, g);
+    el('path', { d: 'M 4 44 L -2 64 L 8 66', fill: 'none', stroke: '#8E5E62', 'stroke-width': 4, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }, g);
+    el('path', { d: 'M -22 100 Q 0 112 22 100', fill: 'none', stroke: '#8E5E62', 'stroke-width': 5, 'stroke-linecap': 'round' }, g);
+    el('path', { d: 'M -138 -20 Q -150 -196 0 -200 Q 150 -196 138 -20 Q 122 -96 64 -112 Q 30 -70 -18 -108 Q -60 -78 -96 -104 Q -126 -80 -138 -20 Z', fill: C.hair }, g);
+    el('path', { d: 'M -70 -168 Q -10 -186 54 -170', fill: 'none', stroke: C.hairHi, 'stroke-width': 8, 'stroke-linecap': 'round' }, g);
+    return g;
+  }
+  function sun(svg, x, y, r) {
+    el('circle', { cx: x, cy: y, r: r, fill: C.y }, svg);
+    for (var i = 0; i < 8; i++) { var a = i * Math.PI / 4; el('line', { x1: x + Math.cos(a) * (r + 8), y1: y + Math.sin(a) * (r + 8), x2: x + Math.cos(a) * (r + 22), y2: y + Math.sin(a) * (r + 22), stroke: C.y, 'stroke-width': 5, 'stroke-linecap': 'round' }, svg); }
+  }
+  function arrow(svg, x1, y1, x2, y2, col, w) {
+    w = w || 6; el('line', { x1: x1, y1: y1, x2: x2, y2: y2, stroke: col, 'stroke-width': w, 'stroke-linecap': 'round' }, svg);
+    var a = Math.atan2(y2 - y1, x2 - x1), L = 18;
+    el('path', { d: 'M' + (x2 - L * Math.cos(a - 0.5)) + ' ' + (y2 - L * Math.sin(a - 0.5)) + ' L' + x2 + ' ' + y2 + ' L' + (x2 - L * Math.cos(a + 0.5)) + ' ' + (y2 - L * Math.sin(a + 0.5)), fill: 'none', stroke: col, 'stroke-width': w, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }, svg);
+  }
+
+  var S = {};
+  S.cover = function (svg) {
+    svg.setAttribute('viewBox', '-540 -330 1080 900');
+    sun(svg, -360, -150, 40);
+    arrow(svg, -300, -120, -190, -60, C.y, 7);
+    face(svg, 40, 40, 1.55, 'clean', 0);
+    // 빛이 돌 때 경계가 놓이는 자리(정해진 길)
+    [-60, 60].forEach(function (dx) { el('path', { d: 'M' + (40 + 1.55 * (dx + 18)) + ' ' + (40 - 1.55 * 150) + ' C' + (40 + 1.55 * (dx + 46)) + ' ' + (40 - 1.55 * 70) + ' ' + (40 + 1.55 * (dx + 4)) + ' ' + (40 + 1.55 * 20) + ' ' + (40 + 1.55 * (dx + 26)) + ' ' + (40 + 1.55 * 70), fill: 'none', stroke: C.y, 'stroke-width': 4, 'stroke-dasharray': '10 9', opacity: 0.8 }, svg); });
+  };
+  S.blotch = function (svg) {
+    base(svg, 600);
+    face(svg, 250, 290, 1.25, 'blotch'); face(svg, 702, 290, 1.25, 'clean', 0);
+    sun(svg, 70, 80, 22); sun(svg, 522, 80, 22);
+    label(svg, 250, 540, '법선으로 계산', C.p, 30); label(svg, 250, 578, '경계가 지저분함', C.dim, 24);
+    label(svg, 702, 540, '작화가 원하는 모양', C.y, 30); label(svg, 702, 578, '깔끔한 한 덩어리', C.dim, 24);
+  };
+  S.table = function (svg) {
+    base(svg, 560);
+    var cols = [400, 600, 810], rows = [150, 280, 410];
+    label(svg, cols[0], 80, '법선 손질', C.txt, 30); label(svg, cols[1], 80, '노멀맵', C.txt, 30); label(svg, cols[2], 80, 'threshold map', C.y, 30);
+    var names = ['① 매끈한 곡선', '② 표정에 깨짐', '③ 손으로 맞추기'];
+    var v = [ ['어려움', '해결', '해결'], ['어려움', '남음', '해결'], ['어려움', '남음', '해결']];
+    rows.forEach(function (ry, i) {
+      el('line', { x1: 32, y1: ry - 64, x2: 920, y2: ry - 64, stroke: '#2E3448', 'stroke-width': 2 }, svg);
+      label(svg, 40, ry + 10, names[i], C.txt, 27, 'start');
+      v[i].forEach(function (t, j) {
+        var ok = t === '해결', col = ok ? C.y : (t === '남음' ? C.dim : C.p);
+        el('rect', { x: cols[j] - 70, y: ry - 30, width: 140, height: 56, rx: 14, fill: ok ? '#3A3213' : '#262B3C', stroke: col, 'stroke-width': 3 }, svg);
+        label(svg, cols[j], ry + 9, t, col, 26);
+      });
+    });
+    label(svg, 920, 530, '[44:13] [44:44] [49:04]~[50:40]', C.dim, 22, 'end', 500);
+  };
+  S.map = function (svg) {
+    base(svg, 600);
+    // 왼쪽: 맵 한 장(회색조, 값이 클수록 밝음)과 각도별 경계선
+    var id = 'mg' + (++uid), d = el('defs', {}, svg);
+    var lg = el('linearGradient', { id: id, x1: 0, x2: 1, y1: 0, y2: 0 }, d);
+    el('stop', { offset: 0, 'stop-color': '#F4F4F4' }, lg); el('stop', { offset: 1, 'stop-color': '#2A2A2A' }, lg);
+    el('rect', { x: 60, y: 70, width: 340, height: 420, rx: 18, fill: '#11131B', stroke: '#3B425A', 'stroke-width': 3 }, svg);
+    el('ellipse', { cx: 230, cy: 280, rx: 140, ry: 180, fill: 'url(#' + id + ')' }, svg);
+    var cp = 'mc' + (++uid); el('ellipse', { cx: 230, cy: 280, rx: 140, ry: 180 }, el('clipPath', { id: cp }, d));
+    var gl = el('g', { 'clip-path': 'url(#' + cp + ')' }, svg);
+    [ [-80, '150°'], [-10, '90°'], [60, '30°']].forEach(function (k) {
+      var x = 230 + k[0];
+      el('path', { d: 'M' + (x + 10) + ' 90 C' + (x + 34) + ' 210 ' + (x - 4) + ' 290 ' + (x + 16) + ' 340 C' + (x + 34) + ' 390 ' + (x + 20) + ' 430 ' + (x + 10) + ' 480', fill: 'none', stroke: C.line, 'stroke-width': 4 }, gl);
+      label(svg, x + 14, 536, k[1], C.line, 24);
+    });
+    label(svg, 230, 50, 'threshold map 한 장', C.txt, 26);
+    label(svg, 230, 578, '붉은 선 = 그 각도의 그늘 경계', C.dim, 22);
+    // 오른쪽: 같은 맵으로 빛 각도만 바꾼 얼굴 세 개
+    [ [530, 30, 60], [680, 90, -10], [830, 150, -80]].forEach(function (k) {
+      face(svg, k[0], 270, 0.48, 'clean', k[2]);
+      label(svg, k[0], 400, '빛 ' + k[1] + '°', C.y, 26);
+    });
+    arrow(svg, 470, 450, 890, 450, C.dim, 4);
+    label(svg, 680, 490, '빛이 돌수록 그늘이 넓어져요', C.dim, 22);
+  };
+  S.angle = function (svg) {
+    base(svg, 400);
+    var cx = 220, cy = 200, r = 100;
+    label(svg, cx, 376, '머리 위에서 본 모습', C.dim, 22);
+    el('circle', { cx: cx, cy: cy, r: r, fill: C.skin }, svg);
+    el('path', { d: 'M' + (cx - 16) + ' ' + (cy - r + 4) + ' L' + cx + ' ' + (cy - r - 22) + ' L' + (cx + 16) + ' ' + (cy - r + 4) + ' Z', fill: C.skin }, svg);
+    arrow(svg, cx, cy, cx, cy - 136, C.txt, 5); label(svg, cx - 20, cy - 132, '머리 앞', C.txt, 22, 'end');
+    var a = 50 * Math.PI / 180, lx = cx + Math.sin(a) * 150, ly = cy - Math.cos(a) * 150;
+    arrow(svg, cx, cy, lx, ly, C.y, 6); label(svg, lx + 10, ly + 30, '빛(수평 성분)', C.y, 22, 'start');
+    el('path', { d: 'M' + cx + ' ' + (cy - 60) + ' A 60 60 0 0 1 ' + (cx + Math.sin(a) * 60) + ' ' + (cy - Math.cos(a) * 60), fill: 'none', stroke: C.p, 'stroke-width': 5 }, svg);
+    label(svg, cx + 34, cy - 74, 'θ', C.p, 30);
+    // 오른쪽: θ → t 수직선
+    var x0 = 520, x1 = 900, ly2 = 220, tx = x0 + (x1 - x0) * (50 / 180);
+    el('line', { x1: x0, y1: ly2, x2: x1, y2: ly2, stroke: C.dim, 'stroke-width': 5, 'stroke-linecap': 'round' }, svg);
+    label(svg, x0, ly2 + 50, '0', C.txt, 28); label(svg, x1, ly2 + 50, '1', C.txt, 28);
+    label(svg, x0, ly2 + 86, '정면 빛', C.dim, 22); label(svg, x1, ly2 + 86, '뒤쪽 빛', C.dim, 22);
+    el('circle', { cx: tx, cy: ly2, r: 14, fill: C.p }, svg);
+    label(svg, tx, ly2 - 32, 't', C.p, 30);
+    label(svg, (x0 + x1) / 2, 110, 't = θ / π', C.y, 34, 'middle', 900);
+  };
+  S.make = function (svg) {
+    base(svg, 560);
+    // ① 36장
+    label(svg, 160, 64, '① 굽기', C.y, 30);
+    for (var i = 0; i < 36; i++) {
+      var gx = 50 + (i % 6) * 38, gy = 104 + Math.floor(i / 6) * 50;
+      el('rect', { x: gx, y: gy, width: 30, height: 40, rx: 5, fill: C.skin }, svg);
+      var w = 30 * (i / 35);
+      el('path', { d: 'M' + (gx + 30 - w) + ' ' + gy + ' l 3 9 l -4 8 l 4 9 l -3 14 L ' + (gx + 30) + ' ' + (gy + 40) + ' L ' + (gx + 30) + ' ' + gy + ' Z', fill: C.shade }, svg);
+    }
+    label(svg, 160, 440, '5°씩 36장', C.txt, 26); label(svg, 160, 476, '(180° 범위)', C.dim, 22);
+    arrow(svg, 290, 270, 340, 270, C.dim, 5);
+    // ② 다듬기
+    label(svg, 476, 64, '② 다듬기', C.y, 30);
+    el('rect', { x: 386, y: 104, width: 180, height: 290, rx: 16, fill: C.skin }, svg);
+    el('path', { d: 'M 486 104 L 506 150 L 478 200 L 512 250 L 474 300 L 500 350 L 486 394', fill: 'none', stroke: C.p, 'stroke-width': 4, 'stroke-dasharray': '8 7' }, svg);
+    el('path', { d: 'M 490 104 C 510 190 470 250 496 300 C 512 340 500 370 494 394 L 566 394 L 566 104 Z', fill: C.shade }, svg);
+    el('path', { d: 'M 540 176 l 34 -34 l 12 12 l -34 34 l -16 4 Z', fill: C.y }, svg);
+    label(svg, 476, 440, '아티스트가 손으로', C.txt, 26); label(svg, 476, 476, '(점선 = 구운 그대로)', C.dim, 22);
+    arrow(svg, 600, 270, 650, 270, C.dim, 5);
+    // ③ 합치기
+    label(svg, 800, 64, '③ 합치기', C.y, 30);
+    var id = 'mk' + (++uid), lg = el('linearGradient', { id: id, x1: 0, x2: 1 }, el('defs', {}, svg));
+    el('stop', { offset: 0, 'stop-color': '#F4F4F4' }, lg); el('stop', { offset: 1, 'stop-color': '#2A2A2A' }, lg);
+    el('rect', { x: 690, y: 104, width: 220, height: 290, rx: 16, fill: 'url(#' + id + ')' }, svg);
+    [730, 790, 850].forEach(function (x) { el('path', { d: 'M ' + x + ' 104 C ' + (x + 20) + ' 190 ' + (x - 20) + ' 250 ' + (x + 6) + ' 300 C ' + (x + 22) + ' 340 ' + (x + 10) + ' 370 ' + (x + 4) + ' 394', fill: 'none', stroke: C.line, 'stroke-width': 4 }, svg); });
+    label(svg, 800, 440, '거리장 보간으로 한 장', C.txt, 26); label(svg, 800, 476, '(사내 도구)', C.dim, 22);
+  };
+
+  document.querySelectorAll('svg[data-scene]').forEach(function (svg) { S[svg.dataset.scene](svg); });
+
+  var slides = document.querySelectorAll('.slide');
+  slides.forEach(function (s, i) { var pg = s.querySelector('.pg'); if (pg) pg.textContent = String(i + 1).padStart(2,'0') + ' / ' + String(slides.length).padStart(2,'0'); });
+  var n = parseInt(location.hash.slice(1), 10);
+  if (n && slides[n - 1]) { document.body.classList.add('single'); slides[n - 1].classList.add('on'); }
+})();
+</script>
+</body>
+</html>

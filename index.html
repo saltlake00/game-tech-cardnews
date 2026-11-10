@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>게임 기법 카드뉴스</title>
+<meta property="og:title" content="게임 기법 카드뉴스">
+<meta property="og:description" content="공개 소스와 개발자 발표로 확인한 게임 기법을 카드뉴스로 정리했습니다.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://saltlake00.github.io/game-tech-cardnews/">
+<meta property="og:image" content="https://saltlake00.github.io/game-tech-cardnews/preview.webp">
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+:root {
+  --bg: #0E1016; --bg2: #151821; --line: #262A37; --line2: #343A4C;
+  --ink: #EEF0F5; --ink2: #B9BFCE; --dim: #7D8498;
+  --acc: #FF7A33; --acc2: #FFD43B;
+  --f-렌더링: #7C9CFF; --f-물리: #4FD1C5; --f-AI: #C084FC; --f-애니메이션: #F472B6; --f-최적화: #A3E635;
+  --f-멀티플레이: #38BDF8; --f-절차생성: #FBBF24; --f-사운드: #FB7185; --f-디자인: #FF7A33;
+  --mono: 'JetBrains Mono', Consolas, monospace;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--ink); font-family: 'Noto Sans KR', 'Malgun Gothic', sans-serif; }
+body { min-height: 100vh;
+  background-image: linear-gradient(var(--bg2) 1px, transparent 1px), linear-gradient(90deg, var(--bg2) 1px, transparent 1px);
+  background-size: 48px 48px; background-position: -1px -1px; }
+a { color: inherit; }
+button { font: inherit; color: inherit; }
+.wrap { max-width: 1240px; margin: 0 auto; padding: 0 28px; }
+
+/* 윗줄 */
+.top { position: sticky; top: 0; z-index: 5; background: rgba(14,16,22,.86); backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); }
+.top .wrap { display: flex; align-items: center; gap: 18px; height: 64px; }
+.logo { display: flex; align-items: center; gap: 12px; font-weight: 900; font-size: 18px; letter-spacing: -.01em; white-space: nowrap; }
+.logo i { width: 30px; height: 30px; border-radius: 8px; background: var(--acc); display: grid; place-items: center; font-style: normal; color: #12141C; font-size: 15px; }
+.logo span { color: var(--dim); font-weight: 500; font-size: 14px; }
+.search { margin-left: auto; position: relative; width: min(340px, 46vw); }
+.search input { width: 100%; height: 40px; border-radius: 10px; border: 1px solid var(--line2); background: var(--bg2); color: var(--ink); padding: 0 40px 0 14px; font: inherit; font-size: 14px; outline: none; }
+.search input:focus { border-color: var(--acc); }
+.search kbd { position: absolute; right: 10px; top: 9px; font-family: var(--mono); font-size: 12px; color: var(--dim); border: 1px solid var(--line2); border-radius: 6px; padding: 1px 7px; }
+
+/* 머리 */
+.hero { padding: 64px 0 28px; display: grid; grid-template-columns: 1.5fr 1fr; gap: 40px; align-items: end; }
+.eyebrow { font-family: var(--mono); font-size: 13px; color: var(--acc); letter-spacing: .12em; }
+.hero h1 { word-break: keep-all; margin: 14px 0 0; font-size: clamp(40px, 6vw, 72px); line-height: 1.08; font-weight: 900; letter-spacing: -.035em; }
+.hero h1 c { color: var(--acc); }
+.hero p { margin: 18px 0 0; color: var(--ink2); font-size: 17px; line-height: 1.7; max-width: 560px; word-break: keep-all; }
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; background: var(--bg2); }
+.stat { padding: 20px 20px 18px; border-right: 1px solid var(--line); }
+.stat:last-child { border-right: 0; }
+.stat b { display: block; font-family: var(--mono); font-size: 34px; font-weight: 700; }
+.stat span { font-size: 13px; color: var(--dim); }
+
+/* 분야 칩 */
+.chips { display: flex; flex-wrap: wrap; gap: 8px; padding: 8px 0 28px; }
+.chip { height: 34px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--line2); background: transparent; cursor: pointer; font-size: 14px; color: var(--ink2); display: inline-flex; align-items: center; gap: 8px; }
+.chip i { width: 8px; height: 8px; border-radius: 50%; background: var(--c, var(--dim)); }
+.chip em { font-style: normal; font-family: var(--mono); font-size: 12px; color: var(--dim); }
+.chip:hover { border-color: var(--ink2); }
+.chip.on { background: var(--ink); color: #12141C; border-color: var(--ink); }
+.chip.on em { color: #4A5068; }
+
+.sec-h { display: flex; align-items: baseline; gap: 12px; margin: 0 0 18px; }
+.sec-h h2 { margin: 0; font-size: 22px; font-weight: 900; letter-spacing: -.01em; }
+.sec-h span { color: var(--dim); font-size: 14px; }
+
+/* 카드뉴스 격자 */
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 22px; }
+.tile { text-align: left; border: 1px solid var(--line); border-radius: 18px; background: var(--bg2); padding: 0; cursor: pointer; overflow: hidden; display: flex; flex-direction: column; transition: transform .18s, border-color .18s; }
+.tile:hover, .tile:focus-visible { transform: translateY(-4px); border-color: var(--acc); outline: none; }
+.thumb { position: relative; aspect-ratio: 4 / 5; overflow: hidden; background: #1B1F2D; }
+.thumb iframe { position: absolute; left: 0; top: 0; width: 1080px; height: 1350px; border: 0; transform-origin: 0 0; pointer-events: none; }
+.thumb .n { position: absolute; right: 12px; top: 12px; font-family: var(--mono); font-size: 12px; font-weight: 700; background: rgba(14,16,22,.8); border: 1px solid var(--line2); border-radius: 999px; padding: 3px 10px; }
+.tile .meta { padding: 16px 18px 18px; }
+.tile .row { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--dim); }
+.tile .row i { width: 8px; height: 8px; border-radius: 50%; background: var(--c); }
+.tile .row b { color: var(--ink2); font-weight: 700; }
+.tile h3 { margin: 10px 0 6px; font-size: 19px; line-height: 1.35; font-weight: 900; letter-spacing: -.01em; word-break: keep-all; }
+.tile p { margin: 0; font-size: 14px; color: var(--ink2); line-height: 1.6; word-break: keep-all; }
+.empty { color: var(--dim); padding: 30px 0; }
+
+/* 다음 후보 */
+.queue { margin: 64px 0 80px; }
+.qlist { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 0 28px; border-top: 1px solid var(--line); }
+.q { display: flex; gap: 12px; align-items: flex-start; padding: 14px 2px; border-bottom: 1px solid var(--line); }
+.q i { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--c); margin-top: 8px; }
+.q div { flex: 1; min-width: 0; }
+.q b { display: block; font-size: 15px; font-weight: 700; }
+.q span { display: block; font-size: 13px; color: var(--dim); margin-top: 3px; line-height: 1.5; word-break: keep-all; }
+.q em { flex: none; font-style: normal; font-family: var(--mono); font-size: 11px; color: var(--ink2); border: 1px solid var(--line2); border-radius: 6px; padding: 2px 7px; margin-top: 2px; }
+.foot { border-top: 1px solid var(--line); padding: 24px 0 40px; color: var(--dim); font-size: 13px; line-height: 1.7; }
+.foot code { font-family: var(--mono); color: var(--ink2); }
+
+/* 뷰어 */
+.viewer { position: fixed; inset: 0; z-index: 20; background: #0A0B10; display: none; grid-template-columns: 1fr 360px; grid-template-rows: 1fr auto; }
+.viewer.open { display: grid; }
+.stage { position: relative; grid-row: 1; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+.track { position: absolute; top: 0; left: 0; height: 100%; display: flex; transition: transform .32s cubic-bezier(.3,.7,.2,1); }
+.cell { flex: none; height: 100%; display: flex; align-items: center; justify-content: center; }
+.frame { position: relative; overflow: hidden; border-radius: 14px; box-shadow: 0 30px 80px rgba(0,0,0,.5); background: #1B1F2D; }
+.frame iframe { position: absolute; left: 0; top: 0; width: 1080px; height: 1350px; border: 0; transform-origin: 0 0; pointer-events: none; }
+.nav { position: absolute; top: 50%; transform: translateY(-50%); width: 52px; height: 52px; border-radius: 50%; border: 1px solid var(--line2); background: rgba(21,24,33,.9); cursor: pointer; font-size: 22px; z-index: 2; }
+.nav:hover { border-color: var(--acc); }
+.nav:disabled { opacity: .25; cursor: default; }
+.prev { left: 22px; } .next { right: 22px; }
+.side { grid-row: 1 / 3; grid-column: 2; background: var(--bg2); border-left: 1px solid var(--line); padding: 26px 26px 22px; overflow-y: auto; display: flex; flex-direction: column; }
+.close { align-self: flex-end; width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--line2); background: transparent; cursor: pointer; font-size: 18px; }
+.side .game { margin-top: 8px; font-family: var(--mono); font-size: 13px; color: var(--acc); letter-spacing: .06em; }
+.side h2 { margin: 10px 0 0; font-size: 28px; line-height: 1.28; font-weight: 900; letter-spacing: -.02em; word-break: keep-all; }
+.side h2 c { color: var(--acc); }
+.side .sub { margin: 14px 0 0; color: var(--ink2); line-height: 1.7; font-size: 15px; word-break: keep-all; }
+.side dl { margin: 22px 0 0; display: grid; grid-template-columns: 64px 1fr; gap: 10px 12px; font-size: 14px; }
+.side dt { color: var(--dim); }
+.side dd { margin: 0; color: var(--ink2); line-height: 1.55; word-break: keep-all; }
+.side dd i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--c); margin-right: 7px; }
+.links { margin-top: auto; padding-top: 24px; display: grid; gap: 8px; }
+.links a { display: flex; justify-content: space-between; align-items: center; height: 42px; padding: 0 14px; border-radius: 10px; border: 1px solid var(--line2); text-decoration: none; font-size: 14px; }
+.links a:hover { border-color: var(--acc); }
+.links a.main { background: var(--acc); color: #12141C; border-color: var(--acc); font-weight: 700; }
+.keys { margin-top: 14px; font-size: 12px; color: var(--dim); }
+.keys kbd { font-family: var(--mono); border: 1px solid var(--line2); border-radius: 5px; padding: 0 5px; }
+.strip { grid-row: 2; grid-column: 1; display: flex; gap: 10px; justify-content: safe center; align-items: center; padding: 12px 20px 18px; overflow-x: auto; }
+.mini { flex: none; width: 64px; aspect-ratio: 4 / 5; border-radius: 8px; overflow: hidden; position: relative; border: 2px solid transparent; cursor: pointer; padding: 0; background: #1B1F2D; opacity: .5; transition: opacity .15s; }
+.mini.on { border-color: var(--acc); opacity: 1; }
+.mini:hover { opacity: 1; }
+.mini iframe { position: absolute; left: 0; top: 0; width: 1080px; height: 1350px; border: 0; transform: scale(.0556); transform-origin: 0 0; pointer-events: none; }
+.count { font-family: var(--mono); font-size: 13px; color: var(--ink2); margin-left: 8px; min-width: 64px; }
+
+@media (max-width: 900px) {
+  .hero { grid-template-columns: 1fr; padding-top: 40px; }
+  .viewer { grid-template-columns: 1fr; grid-template-rows: 1fr auto auto; }
+  .side { grid-row: 3; grid-column: 1; border-left: 0; border-top: 1px solid var(--line); max-height: 34vh; padding: 16px 18px; }
+  .side h2 { font-size: 20px; } .side dl, .links, .keys { display: none; }
+  .close { position: fixed; top: 12px; right: 12px; z-index: 3; background: var(--bg2); }
+  .nav { width: 40px; height: 40px; font-size: 18px; } .prev { left: 8px; } .next { right: 8px; }
+  .mini { width: 40px; }
+  .mini iframe { transform: scale(.037); }
+}
+@media (max-width: 560px) {
+  .wrap { padding: 0 16px; }
+  .logo span { display: none; }
+  .search kbd { display: none; }
+  .stat b { font-size: 26px; }
+}
+</style>
+</head>
+<body>
+<header class="top"><div class="wrap">
+  <div class="logo"><i>▶</i>게임 기법 카드뉴스<span>넘겨 보는 기법 노트</span></div>
+  <label class="search"><input id="q" type="search" placeholder="게임·기법 검색" autocomplete="off"><kbd>/</kbd></label>
+</div></header>
+
+<main class="wrap">
+  <section class="hero">
+    <div>
+      <div class="eyebrow">GAME TECHNIQUE · CARD NEWS</div>
+      <h1>게임이 화면 뒤에서<br>하는 일을 <c>8장</c>으로</h1>
+      <p>공개 소스와 개발자 발표로 확인한 게임 기법을 카드뉴스로 정리했습니다. 표지를 누르면 한 장씩 넘겨 볼 수 있습니다.</p>
+    </div>
+    <div class="stats" id="stats"></div>
+  </section>
+
+  <nav class="chips" id="chips" aria-label="분야"></nav>
+
+  <section>
+    <div class="sec-h"><h2>카드뉴스</h2><span id="shown"></span></div>
+    <div class="grid" id="grid"></div>
+  </section>
+
+  
+
+  <footer class="foot">
+    도식은 모두 직접 그렸고, 게임 화면과 발표 슬라이드는 넣지 않았습니다. 출처는 각 카드뉴스 마지막 장에 있습니다.
+  </footer>
+</main>
+
+<div class="viewer" id="viewer" role="dialog" aria-modal="true" aria-label="카드뉴스 보기">
+  <div class="stage" id="stage">
+    <div class="track" id="track"></div>
+    <button class="nav prev" id="prev" aria-label="이전 장">‹</button>
+    <button class="nav next" id="next" aria-label="다음 장">›</button>
+  </div>
+  <div class="strip" id="strip"></div>
+  <aside class="side" id="side"></aside>
+</div>
+
+<script>
+const DATA = {"news": [{"id": "얼굴-그림자", "slides": 8, "game": "Hi-Fi RUSH", "chip": "애니풍 얼굴 그림자 · threshold map", "head": "이 얼굴 그림자,<br><c>빛을 계산</c>하지 않아요", "headPlain": "이 얼굴 그림자, 빛을 계산하지 않아요", "sub": "빛이 돈 각도에 맞춰 미리 그려 둔 그림자 모양을 골라 쓰는 이야기예요.", "src": "하이파이 러시 GDC 2024 발표 [41:36]~[51:12]", "label": "렌더링", "tech": "", "field": "렌더링", "techName": "SDF 그림자 텍스처와 연출용 그림자", "explain": ""}, {"id": "코요테-타임", "slides": 8, "game": "Celeste", "chip": "코요테 타임 · 입력 버퍼", "head": "이 점프, 사실<br><c>허공에서</c> 뛰었어요", "headPlain": "이 점프, 사실 허공에서 뛰었어요", "sub": "발판을 떠난 뒤에 눌러도 점프를 받아 주는 두 타이머 이야기예요.", "src": "셀레스테 공개 소스(Player.cs)", "label": "조작감", "tech": "", "field": "디자인", "techName": "코요테 타임·입력 버퍼", "explain": ""}], "queue": []};
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fieldOf = n => n.field || n.label;
+const color = f => `var(--f-${f}, var(--dim))`;
+const slideUrl = (id, n) => `${encodeURIComponent(id)}/index.html?s=${n}#${n}`;
+let field = '전체', query = '';
+
+// 머리 숫자
+const total = DATA.news.reduce((a, n) => a + n.slides, 0);
+const nFields = new Set(DATA.news.map(fieldOf)).size;
+$('#stats').innerHTML = [[DATA.news.length, '카드뉴스'], [total, '장'], [nFields, '분야']]
+  .map(([b, s]) => `<div class="stat"><b>${b}</b><span>${s}</span></div>`).join('');
+
+// 분야 칩: 카드뉴스가 있는 분야를 앞에
+const fields = {};
+DATA.news.forEach(n => fields[fieldOf(n)] = (fields[fieldOf(n)] || 0) + 1);
+const chipList = ['전체', ...Object.keys(fields).sort((a, b) => fields[b] - fields[a])];
+function drawChips() {
+  $('#chips').innerHTML = chipList.map(f => `<button class="chip${f === field ? ' on' : ''}" data-f="${esc(f)}" style="--c:${color(f)}">
+    ${f === '전체' ? '' : '<i></i>'}${esc(f)}<em>${f === '전체' ? DATA.news.length : fields[f]}</em></button>`).join('');
+}
+$('#chips').addEventListener('click', e => { const b = e.target.closest('.chip'); if (!b) return; field = b.dataset.f; drawChips(); drawGrid(); });
+
+function match(n) {
+  const hay = [n.game, n.chip, n.headPlain, n.sub, n.techName, n.label, n.field].join(' ').toLowerCase();
+  return (field === '전체' || fieldOf(n) === field || n.label === field) && (!query || hay.includes(query));
+}
+function drawGrid() {
+  const list = DATA.news.filter(match);
+  $('#shown').textContent = `${list.length}편`;
+  $('#grid').innerHTML = list.length ? list.map(n => `
+    <button class="tile" data-id="${esc(n.id)}" style="--c:${color(fieldOf(n))}">
+      <div class="thumb"><iframe loading="lazy" tabindex="-1" title="${esc(n.chip)} 표지" src="${slideUrl(n.id, 1)}"></iframe><span class="n">${n.slides}장</span></div>
+      <div class="meta">
+        <div class="row"><i></i><b>${esc(n.label || n.field)}</b>· ${esc(n.game)}</div>
+        <h3>${esc(n.chip)}</h3>
+        <p>${esc(n.headPlain)}</p>
+      </div>
+    </button>`).join('') : '<div class="empty">맞는 카드뉴스가 없습니다.</div>';
+  fitThumbs();
+}
+function fitThumbs() {
+  document.querySelectorAll('.thumb').forEach(t => { t.querySelector('iframe').style.transform = `scale(${t.clientWidth / 1080})`; });
+}
+$('#grid').addEventListener('click', e => { const t = e.target.closest('.tile'); if (t) openViewer(t.dataset.id, 1); });
+
+if ($('#queue')) $('#queue').innerHTML = DATA.queue.map(t => `<div class="q" style="--c:${color(t.field)}"><i></i>
+  <div><b>${esc(t.name)}</b><span>${esc(t.phrase)}</span></div><em>${esc(t.field)}</em></div>`).join('');
+
+const qi = $('#q');
+qi.addEventListener('input', () => { query = qi.value.trim().toLowerCase(); drawGrid(); });
+
+// 뷰어
+let cur = null, idx = 1;
+function openViewer(id, n) {
+  cur = DATA.news.find(x => x.id === id); if (!cur) return;
+  const c = color(fieldOf(cur));
+  $('#track').innerHTML = Array.from({length: cur.slides}, (_, i) =>
+    `<div class="cell"><div class="frame"><iframe tabindex="-1" title="${i + 1}장" src="${slideUrl(cur.id, i + 1)}"></iframe></div></div>`).join('');
+  $('#strip').innerHTML = Array.from({length: cur.slides}, (_, i) =>
+    `<button class="mini" data-n="${i + 1}" aria-label="${i + 1}장"><iframe loading="lazy" tabindex="-1" src="${slideUrl(cur.id, i + 1)}"></iframe></button>`).join('')
+    + '<span class="count" id="count"></span>';
+  $('#side').innerHTML = `
+    <button class="close" id="close" aria-label="닫기">✕</button>
+    <div class="game">${esc(cur.game.toUpperCase())}</div>
+    <h2>${cur.head}</h2>
+    <p class="sub">${esc(cur.sub)}</p>
+    <dl>
+      <dt>기법</dt><dd>${esc(cur.techName || cur.chip)}</dd>
+      <dt>분야</dt><dd style="--c:${c}"><i></i>${esc(cur.label)}${cur.field && cur.field !== cur.label ? ' · ' + esc(cur.field) : ''}</dd>
+      <dt>자료</dt><dd>${esc(cur.src)}</dd>
+      <dt>장 수</dt><dd>${cur.slides}장</dd>
+    </dl>
+    <div class="links">
+      <a class="main" href="${encodeURIComponent(cur.id)}/index.html" target="_blank">전체 장 한 쪽에 펼쳐 보기 <span>↗</span></a>
+      ${cur.explain ? `<a href="${cur.explain}" target="_blank">해설 글 원고 <span>↗</span></a>` : ''}
+    </div>
+    <div class="keys"><kbd>←</kbd> <kbd>→</kbd> 넘기기 · <kbd>Esc</kbd> 닫기</div>`;
+  $('#close').onclick = closeViewer;
+  $('#viewer').classList.add('open');
+  document.body.style.overflow = 'hidden';
+  layout(); go(n, false);
+}
+function closeViewer() {
+  $('#viewer').classList.remove('open'); document.body.style.overflow = '';
+  $('#track').innerHTML = ''; $('#strip').innerHTML = ''; cur = null;
+  history.replaceState(null, '', location.pathname + location.search);
+}
+function layout() {
+  if (!cur) return;
+  const st = $('#stage'), W = st.clientWidth, H = st.clientHeight;
+  const s = Math.min((H - 40) / 1350, (W - (W < 700 ? 24 : 140)) / 1080, 1);
+  document.querySelectorAll('.cell').forEach(c => c.style.width = W + 'px');
+  document.querySelectorAll('.frame').forEach(f => { f.style.width = 1080 * s + 'px'; f.style.height = 1350 * s + 'px'; f.firstElementChild.style.transform = `scale(${s})`; });
+  $('#track').style.transition = 'none'; place(); $('#track').offsetWidth; $('#track').style.transition = '';
+}
+function place() { $('#track').style.transform = `translateX(${-(idx - 1) * $('#stage').clientWidth}px)`; }
+function go(n, anim = true) {
+  if (!cur) return;
+  idx = Math.max(1, Math.min(cur.slides, n));
+  if (!anim) $('#track').style.transition = 'none';
+  place();
+  if (!anim) { $('#track').offsetWidth; $('#track').style.transition = ''; }
+  $('#prev').disabled = idx === 1; $('#next').disabled = idx === cur.slides;
+  document.querySelectorAll('.mini').forEach(m => m.classList.toggle('on', +m.dataset.n === idx));
+  const on = document.querySelector('.mini.on'); if (on) on.scrollIntoView({block: 'nearest', inline: 'center'});
+  $('#count').textContent = `${String(idx).padStart(2, '0')} / ${String(cur.slides).padStart(2, '0')}`;
+  history.replaceState(null, '', `#${cur.id}/${idx}`);
+}
+$('#prev').onclick = () => go(idx - 1);
+$('#next').onclick = () => go(idx + 1);
+$('#strip').addEventListener('click', e => { const m = e.target.closest('.mini'); if (m) go(+m.dataset.n); });
+// 밀어서 넘기기
+let sx = null;
+$('#stage').addEventListener('pointerdown', e => { if (!e.target.closest('.nav')) sx = e.clientX; });
+addEventListener('pointerup', e => { if (sx === null) return; const d = e.clientX - sx; sx = null; if (Math.abs(d) > 50) go(idx + (d < 0 ? 1 : -1)); });
+addEventListener('keydown', e => {
+  if (cur) {
+    if (e.key === 'ArrowRight') go(idx + 1);
+    else if (e.key === 'ArrowLeft') go(idx - 1);
+    else if (e.key === 'Escape') closeViewer();
+  } else if (e.key === '/' && document.activeElement !== qi) { e.preventDefault(); qi.focus(); }
+});
+addEventListener('resize', () => { fitThumbs(); layout(); });
+
+drawChips(); drawGrid();
+// 주소 #<카드뉴스>/<장> 으로 바로 열기
+const m = decodeURIComponent(location.hash.slice(1)).match(/^(.+?)\/(\d+)$/);
+if (m) openViewer(m[1], +m[2]);
+</script>
+</body>
+</html>

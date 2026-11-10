@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>카드뉴스 — 코요테 타임과 입력 버퍼</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap">
+<style>
+html, body { margin: 0; padding: 0; background: #D9D4C8; }
+body { display: flex; flex-direction: column; align-items: center; gap: 40px; padding: 40px 0; }
+body.single { padding: 0; gap: 0; }
+body.single .slide { display: none; }
+body.single .slide.on { display: flex; }
+
+.slide {
+  width: 1080px; height: 1350px; box-sizing: border-box; flex: none;
+  padding: 60px 64px 44px; display: flex; flex-direction: column;
+  position: relative; overflow: hidden;
+  background: #F6F3EC; color: #17181C;
+  font-family: 'Noto Sans KR', 'Malgun Gothic', sans-serif;
+}
+.tag { align-self: flex-start; font-size: 26px; font-weight: 700; color: #F6F3EC; background: #17181C; border-radius: 999px; padding: 6px 22px; }
+.tag b { color: #FFD43B; margin-right: 10px; }
+.head { margin-top: 22px; font-size: 70px; font-weight: 900; line-height: 1.22; letter-spacing: -0.02em; }
+c { color: #E8590C; }
+.stage { margin-top: 28px; flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; }
+.stage svg { width: 952px; height: auto; max-height: 100%; display: block; border-radius: 28px; }
+.band { margin-top: 26px; background: #17181C; color: #F1F3F8; border-radius: 26px; padding: 30px 38px; font-size: 34px; line-height: 1.55; font-weight: 500; word-break: keep-all; }
+.band y { color: #FFD43B; font-weight: 700; }
+.band p2 { color: #FF6B9A; font-weight: 700; }
+.band small { display: block; margin-top: 10px; font-size: 24px; color: #8D94A8; }
+.foot { margin-top: 20px; display: flex; justify-content: space-between; font-size: 24px; color: #6B6A66; font-weight: 500; }
+.foot .pg { font-weight: 900; color: #17181C; }
+
+/* 표지(1장): 장면을 꽉 채우고 아래에 큰 제목. gamit·ASAP 표지 틀 */
+.slide.cover { padding: 0; background-color: #1B1F2D; color: #F6F3EC;
+  background-image: linear-gradient(#232838 2px, transparent 2px), linear-gradient(90deg, #232838 2px, transparent 2px);
+  background-size: 63.5px 63.5px; background-position: -1px -1px; }
+.cv-scene { position: absolute; left: 0; top: 230px; width: 1080px; height: auto; display: block; }
+.slide.cover::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 640px;
+  background: linear-gradient(to bottom, rgba(18,20,28,0) 0%, rgba(18,20,28,.86) 34%, #12141C 58%); }
+.cv-top { position: relative; z-index: 2; display: flex; justify-content: space-between; align-items: center; padding: 56px 64px 0; }
+.cv-brand { display: flex; align-items: center; font-size: 34px; font-weight: 900; }
+.cv-brand span { font-size: 24px; font-weight: 700; color: #B9BFCE; margin-left: 18px; padding-left: 18px; border-left: 3px solid #4A5068; letter-spacing: .04em; }
+.cv-pg { font-size: 24px; font-weight: 900; color: #17181C; background: #F6F3EC; border-radius: 999px; padding: 6px 18px; }
+.cv-game { position: relative; z-index: 2; margin: 30px 64px 0; font-size: 64px; font-weight: 900; letter-spacing: -0.01em; }
+.cv-chip { position: relative; z-index: 2; align-self: flex-start; margin: 18px 64px 0; font-size: 26px; font-weight: 700; color: #17181C; background: #F6F3EC; border-radius: 10px; padding: 6px 16px; }
+.cv-bottom { position: absolute; z-index: 2; left: 64px; right: 64px; bottom: 58px; }
+.cv-head { font-size: 92px; font-weight: 900; line-height: 1.18; letter-spacing: -0.025em; color: #FFFFFF; }
+.cv-head c { color: #FF7A33; }
+.cv-sub { margin-top: 26px; font-size: 34px; line-height: 1.5; font-weight: 500; color: #D5D9E3; }
+.cv-src { margin-top: 22px; font-size: 22px; color: #8D94A8; }
+
+.code { font-family: Consolas, 'D2Coding', monospace; font-size: 24px; line-height: 1.5; color: #C9CEDB; }
+.code .hl { display: block; background: #3A3213; color: #FFE58A; margin: 4px -14px; padding: 2px 14px; border-radius: 8px; }
+.code .c { color: #6E768C; }
+
+.nums { margin-top: 30px; flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-content: start; }
+.num { background: #FFFFFF; border: 3px solid #17181C; border-radius: 22px; padding: 24px 28px; }
+.num b { display: block; font-size: 72px; font-weight: 900; color: #E8590C; line-height: 1.1; }
+.num span { display: block; font-size: 30px; font-weight: 700; margin-top: 6px; }
+.num i { display: block; font-style: normal; font-size: 23px; color: #6B6A66; margin-top: 4px; }
+.num.wide { grid-column: 1 / 3; }
+
+.sum { margin: 30px 0 0; padding: 0; list-style: none; counter-reset: n; flex: 1; }
+.sum li { counter-increment: n; display: flex; align-items: center; gap: 22px; background: #FFFFFF; border: 3px solid #17181C; border-radius: 22px; padding: 40px 30px; margin-bottom: 24px; font-size: 38px; font-weight: 700; }
+.sum li::before { content: counter(n); flex: none; width: 56px; height: 56px; border-radius: 50%; background: #17181C; color: #FFD43B; font-weight: 900; display: flex; align-items: center; justify-content: center; }
+.sum li c { font-weight: 900; }
+.sum li i { margin-left: auto; font-style: normal; font-size: 24px; color: #6B6A66; font-weight: 500; }
+</style>
+</head>
+<body>
+
+<section class="slide cover">
+  <svg class="cv-scene" data-scene="cover-full"></svg>
+  <div class="cv-top">
+    <div class="cv-brand"><b>게임 기법</b><span>조작감</span></div>
+    <div class="cv-pg pg"></div>
+  </div>
+  <div class="cv-game">Celeste</div>
+  <div class="cv-chip">코요테 타임 · 입력 버퍼</div>
+  <div class="cv-bottom">
+    <div class="cv-head">이 점프, 사실<br><c>허공에서</c> 뛰었어요</div>
+    <div class="cv-sub">발판을 떠난 뒤에 눌러도 점프를 받아 주는<br>두 타이머 이야기예요.</div>
+    <div class="cv-src">자료: 셀레스테 공개 소스(Player.cs)</div>
+  </div>
+</section>
+
+<section class="slide">
+  <div class="tag"><b>02</b>문제</div>
+  <div class="head">끝에서 눌렀는데<br><c>그냥 떨어져요</c></div>
+  <div class="stage"><svg data-scene="fail-edge"></svg></div>
+  <div class="band">플레이어는 아직 발판 위라고 느껴요. 그런데 캐릭터는 두 프레임 전에 떨어졌고, 땅 판정은 이미 <p2>AIR</p2>예요.</div>
+  <div class="foot"><span>게임 기법 카드 · 코요테 타임</span><span class="pg"></span></div>
+</section>
+
+<section class="slide">
+  <div class="tag"><b>03</b>해법 ① 코요테 타임</div>
+  <div class="head">떠난 뒤 <c>0.1초</c>는<br>땅으로 쳐 줘요</div>
+  <div class="stage"><svg data-scene="coyote"></svg></div>
+  <div class="band">땅에 있는 동안 타이머를 채우고 공중에서는 깎기만 해요. 타이머가 남아 있으면 <y>공중에서도</y> 뛸 수 있어요.<small>절벽 밖에서 잠깐 버티는 만화 속 코요테에서 따온 이름이에요</small></div>
+  <div class="foot"><span>게임 기법 카드 · 코요테 타임</span><span class="pg"></span></div>
+</section>
+
+<section class="slide">
+  <div class="tag"><b>04</b>문제</div>
+  <div class="head">착지 직전에 누르면<br><c>입력이 사라져요</c></div>
+  <div class="stage"><svg data-scene="fail-early"></svg></div>
+  <div class="band">누른 순간은 공중이라 입력이 버려져요. 착지하고 <p2>다시 눌러야</p2> 해서 연속 점프 박자가 어긋나요.</div>
+  <div class="foot"><span>게임 기법 카드 · 코요테 타임</span><span class="pg"></span></div>
+</section>
+
+<section class="slide">
+  <div class="tag"><b>05</b>해법 ② 입력 버퍼</div>
+  <div class="head">누른 입력을<br><c>잠깐 기억</c>해요</div>
+  <div class="stage"><svg data-scene="buffer"></svg></div>
+  <div class="band">기억이 남아 있을 때 땅에 닿으면 <y>착지한 그 프레임</y>에 바로 뛰어요. 점프 버퍼링이라고도 불러요.</div>
+  <div class="foot"><span>게임 기법 카드 · 코요테 타임</span><span class="pg"></span></div>
+</section>
+
+<section class="slide">
+  <div class="tag"><b>06</b>원리</div>
+  <div class="head">두 타이머가<br><c>겹치면</c> 점프</div>
+  <div class="stage"><svg data-scene="timeline"></svg></div>
+  <div class="band"><div class="code"><span class="c">// 매 프레임</span><br>coyote = 땅에 있음 ? 0.1 : max(0, coyote - dt)<br>buffer = 이번에 누름 ? 0.1 : max(0, buffer - dt)<span class="hl">if (coyote &gt; 0 &amp;&amp; buffer &gt; 0) { 점프(); coyote = buffer = 0; }</span></div>뛰고 나면 둘 다 0으로 비워요. 셀레스테도 점프하면서 남은 입력과 코요테 시간을 <y>함께 써 버려요</y>.</div>
+  <div class="foot"><span>버퍼 0.1초는 예제 값이에요(셀레스테 본편 버퍼 길이는 공개 소스에 없어요)</span><span class="pg"></span></div>
+</section>
+
+<section class="slide">
+  <div class="tag"><b>07</b>셀레스테의 실제 값</div>
+  <div class="head">공개된 소스에<br><c>숫자</c>가 있어요</div>
+  <div class="nums">
+    <div class="num"><b>0.1초</b><span>코요테 타임</span><i>Player.cs</i></div>
+    <div class="num"><b>0.2초</b><span>누르는 만큼 높이 뛰기</span><i>Player.cs</i></div>
+    <div class="num"><b>6프레임</b><span>코요테 (PICO-8판)</span><i>Classic.cs</i></div>
+    <div class="num"><b>4프레임</b><span>입력 버퍼 (PICO-8판)</span><i>Classic.cs</i></div>
+  </div>
+  <div class="band">0.1초는 정답이 아니라 출발점이에요. 너무 길게 잡으면 <p2>허공을 딛고</p2> 뛰는 게 눈에 보여요.</div>
+  <div class="foot"><span>출처: 셀레스테 공개 소스(NoelFB/Celeste)</span><span class="pg"></span></div>
+</section>
+
+<section class="slide">
+  <div class="tag"><b>08</b>정리</div>
+  <div class="head">한 장으로<br><c>정리</c>해요</div>
+  <ol class="sum">
+    <li><c>땅을 떠나도</c> 0.1초는 뛸 수 있게<i>코요테 타임</i></li>
+    <li><c>미리 눌러도</c> 잠깐은 기억하게<i>입력 버퍼</i></li>
+    <li><c>뛰고 나면</c> 두 타이머를 0으로<i>입력 소비</i></li>
+  </ol>
+  <div class="band">특별한 엔진 기능 없이 캐릭터 스크립트에 <y>타이머 두 개</y>만 넣으면 돼요.<small>셀레스테 본편은 초 단위(0.1초), PICO-8판은 프레임 카운터(6·4)로 세요</small></div>
+  <div class="foot"><span>출처: 셀레스테 공개 소스 · 메디 소슨 게임 필 스레드(2020)</span><span class="pg"></span></div>
+</section>
+
+<script>
+(function () {
+  var NS = 'http://www.w3.org/2000/svg';
+  var C = { bg: '#1B1F2D', grid: '#232838', plat: '#C9CED8', platTop: '#EEF1F6', pit: '#0E1018', hero: '#FFB547', ghost: '#FFB547', y: '#FFD43B', p: '#FF6B9A', air: '#5B8CFF', gnd: '#FFD43B', txt: '#F1F3F8', dim: '#8D94A8', red: '#FF5A5A' };
+  function el(tag, a, parent, text) { var e = document.createElementNS(NS, tag); for (var k in a) e.setAttribute(k, a[k]); if (text != null) e.textContent = text; if (parent) parent.appendChild(e); return e; }
+  function base(svg, h, y0) {
+    y0 = y0 || 0; svg.setAttribute('viewBox', '0 ' + y0 + ' 952 ' + (h - y0));
+    el('rect', { x: 0, y: y0, width: 952, height: h - y0, rx: 28, fill: C.bg }, svg);
+    for (var x = 56; x < 952; x += 56) el('line', { x1: x, y1: 0, x2: x, y2: h, stroke: C.grid, 'stroke-width': 2 }, svg);
+    for (var y = 56; y < h; y += 56) el('line', { x1: 0, y1: y, x2: 952, y2: y, stroke: C.grid, 'stroke-width': 2 }, svg);
+  }
+  function plat(svg, x, y, w, h) { el('rect', { x: x, y: y, width: w, height: h, fill: C.plat }, svg); el('rect', { x: x, y: y, width: w, height: 10, fill: C.platTop }, svg); }
+  // 캐릭터: 바닥 중앙 (cx, by) 기준 48x48
+  function hero(svg, cx, by, op, dashed) {
+    var g = el('g', { opacity: op == null ? 1 : op }, svg);
+    if (dashed) el('rect', { x: cx - 24, y: by - 48, width: 48, height: 48, rx: 8, fill: 'none', stroke: C.ghost, 'stroke-width': 4, 'stroke-dasharray': '8 6' }, g);
+    else { el('rect', { x: cx - 24, y: by - 48, width: 48, height: 48, rx: 8, fill: C.hero }, g); el('rect', { x: cx + 2, y: by - 36, width: 7, height: 12, rx: 3, fill: '#1B1F2D' }, g); el('rect', { x: cx + 14, y: by - 36, width: 7, height: 12, rx: 3, fill: '#1B1F2D' }, g); }
+    return g;
+  }
+  function badge(svg, x, y, kind) { var col = kind === 'AIR' ? C.air : C.gnd; var w = kind === 'AIR' ? 92 : 132; el('rect', { x: x - w / 2, y: y, width: w, height: 42, rx: 10, fill: col }, svg); el('text', { x: x, y: y + 30, 'text-anchor': 'middle', 'font-size': 26, 'font-weight': 900, fill: '#12151F', 'font-family': 'Noto Sans KR' }, svg, kind); }
+  function press(svg, x, y, label) { el('circle', { cx: x, cy: y, r: 30, fill: 'none', stroke: C.p, 'stroke-width': 6 }, svg); el('circle', { cx: x, cy: y, r: 14, fill: C.p }, svg); if (label) el('text', { x: x, y: y - 44, 'text-anchor': 'middle', 'font-size': 28, 'font-weight': 900, fill: C.p, 'font-family': 'Noto Sans KR' }, svg, label); }
+  function label(svg, x, y, t, col, size, anchor) { el('text', { x: x, y: y, 'text-anchor': anchor || 'middle', 'font-size': size || 28, 'font-weight': 700, fill: col || C.txt, 'font-family': 'Noto Sans KR' }, svg, t); }
+  function arc(svg, d, col, dash) { el('path', { d: d, fill: 'none', stroke: col || C.y, 'stroke-width': 6, 'stroke-dasharray': dash || '14 10', 'stroke-linecap': 'round' }, svg); }
+  function timer(svg, x, y, w, frac, col, text) { el('rect', { x: x, y: y, width: w, height: 22, rx: 11, fill: '#0E1018', stroke: col, 'stroke-width': 3 }, svg); el('rect', { x: x + 3, y: y + 3, width: Math.max(0, (w - 6) * frac), height: 16, rx: 8, fill: col }, svg); if (text) label(svg, x + w / 2, y + 60, text, col, 26); }
+  function arrowDown(svg, x, y1, y2, col) { el('line', { x1: x, y1: y1, x2: x, y2: y2, stroke: col, 'stroke-width': 6, 'stroke-dasharray': '12 9' }, svg); el('path', { d: 'M' + (x - 14) + ' ' + (y2 - 14) + ' L' + x + ' ' + y2 + ' L' + (x + 14) + ' ' + (y2 - 14), fill: 'none', stroke: col, 'stroke-width': 6, 'stroke-linecap': 'round' }, svg); }
+
+  var S = {};
+  // 왼쪽 발판 끝 x=380, 높이 y=520 / 오른쪽 발판 x=640~, y=420
+  function ledgeWorld(svg) { plat(svg, 0, 520, 380, 220); plat(svg, 640, 420, 312, 320); el('rect', { x: 380, y: 700, width: 260, height: 40, fill: C.pit }, svg); }
+  S.cover = function (svg) {
+    base(svg, 740, 90); ledgeWorld(svg);
+    [190, 270, 350].forEach(function (x, i) { hero(svg, x, 520, 0.25 + i * 0.15, true); });
+    hero(svg, 424, 532, 0.9, true);
+    press(svg, 424, 420, null); label(svg, 330, 360, '여기서 누름', C.p, 30);
+    el('line', { x1: 424, y1: 450, x2: 424, y2: 482, stroke: C.p, 'stroke-width': 4 }, svg);
+    el('line', { x1: 380, y1: 560, x2: 380, y2: 660, stroke: C.dim, 'stroke-width': 3, 'stroke-dasharray': '6 6' }, svg);
+    label(svg, 392, 690, '발판 끝', C.dim, 24, 'start');
+    arc(svg, 'M448 500 Q 560 200 700 380');
+    hero(svg, 700, 420, 1);
+  };
+  // 표지용: 바탕·격자 없이 장면만(바탕 격자는 CSS). 캐릭터·궤적을 크게 보이게 잘라 쓴다.
+  S['cover-full'] = function (svg) {
+    svg.setAttribute('viewBox', '120 230 760 600');
+    plat(svg, 120, 600, 300, 230); plat(svg, 640, 500, 240, 330); el('rect', { x: 420, y: 760, width: 220, height: 70, fill: C.pit }, svg);
+    [240, 310, 380].forEach(function (x, i) { hero(svg, x, 600, 0.25 + i * 0.18, true); });
+    hero(svg, 462, 612, 0.95, true);
+    el('line', { x1: 420, y1: 640, x2: 420, y2: 760, stroke: C.dim, 'stroke-width': 3, 'stroke-dasharray': '6 6' }, svg);
+    press(svg, 462, 496, null); label(svg, 462, 432, '여기서 누름', C.p, 30);
+    el('line', { x1: 462, y1: 526, x2: 462, y2: 560, stroke: C.p, 'stroke-width': 4 }, svg);
+    arc(svg, 'M486 580 Q 600 280 740 460');
+    hero(svg, 740, 500, 1);
+  };
+  S['fail-edge'] = function (svg) {
+    base(svg, 740, 90); ledgeWorld(svg);
+    [190, 270, 350].forEach(function (x, i) { hero(svg, x, 520, 0.25 + i * 0.15, true); });
+    hero(svg, 424, 534, 1);
+    badge(svg, 424, 422, 'AIR');
+    press(svg, 520, 380, '눌렀지만');
+    arrowDown(svg, 450, 560, 690, C.red);
+    label(svg, 560, 640, '점프 없음', C.red, 30);
+    label(svg, 40, 310, '땅 판정 = 이번 프레임에 발이 닿았나만 봅니다', C.dim, 26, 'start');
+  };
+  S.coyote = function (svg) {
+    base(svg, 740, 90); ledgeWorld(svg);
+    [270, 350].forEach(function (x, i) { hero(svg, x, 520, 0.3 + i * 0.2, true); });
+    hero(svg, 424, 534, 1);
+    badge(svg, 424, 422, 'AIR');
+    timer(svg, 410, 600, 200, 0.7, C.y, null); label(svg, 510, 668, '코요테 0.07초 남음', C.y, 26);
+    press(svg, 520, 380, '눌렀다');
+    arc(svg, 'M448 500 Q 570 210 720 380');
+    hero(svg, 720, 420, 1);
+    label(svg, 760, 360, '점프 성공', C.y, 30);
+  };
+  // 위에서 떨어져 바닥(y=560)에 착지
+  function floorWorld(svg) { plat(svg, 0, 560, 952, 180); }
+  S['fail-early'] = function (svg) {
+    base(svg, 740, 90); floorWorld(svg);
+    hero(svg, 300, 200, 0.3, true); hero(svg, 300, 340, 0.55, true);
+    hero(svg, 300, 470, 1); badge(svg, 300, 372 - 4, 'AIR');
+    press(svg, 430, 420, null); label(svg, 480, 400, '착지 직전 누름', C.p, 28, 'start');
+    label(svg, 480, 440, '→ 버려짐', C.red, 28, 'start');
+    hero(svg, 650, 560, 1); badge(svg, 650, 462, 'GROUND');
+    label(svg, 650, 650, '그대로 서 있음', C.red, 30);
+    el('path', { d: 'M336 500 Q 480 540 610 540', fill: 'none', stroke: C.dim, 'stroke-width': 4, 'stroke-dasharray': '6 8' }, svg);
+  };
+  S.buffer = function (svg) {
+    base(svg, 740, 90); floorWorld(svg);
+    hero(svg, 260, 220, 0.3, true); hero(svg, 260, 360, 0.55, true);
+    hero(svg, 260, 480, 1); badge(svg, 260, 380, 'AIR');
+    press(svg, 360, 430, '누름');
+    timer(svg, 330, 470, 200, 0.6, C.p, '기억 0.06초 남음');
+    hero(svg, 600, 560, 0.9, true); badge(svg, 600, 580, 'GROUND');
+    arc(svg, 'M624 520 Q 700 160 800 360');
+    hero(svg, 800, 360, 1);
+    label(svg, 820, 300, '바로 점프', C.y, 30);
+  };
+  S.timeline = function (svg) {
+    var h = 430; base(svg, h);
+    var x0 = 170, x1 = 910, land = x0 + 330, px = x0 + 200, rowA = 140, rowB = 290, top = 40;
+    label(svg, 30, rowA + 10, '코요테', C.y, 30, 'start'); label(svg, 30, rowB + 10, '버퍼', C.p, 30, 'start');
+    el('rect', { x: x0, y: top - 10, width: land - x0, height: 30, rx: 6, fill: '#22305A' }, svg); label(svg, (x0 + land) / 2, top + 13, 'AIR (떨어지는 중)', C.air, 22);
+    el('rect', { x: land, y: top - 10, width: x1 - land, height: 30, rx: 6, fill: '#2C3346' }, svg); label(svg, (land + x1) / 2, top + 13, 'GROUND', C.gnd, 22);
+    // 버퍼: 누른 순간 가득 → 줄어듦 → 착지 순간 점프하며 0
+    var bTop = rowB - 40, bBot = rowB + 40, slope = 80 / 260;
+    var bAtLand = bBot - (bBot - bTop) * (1 - (land - px) * 1 / 260);
+    el('path', { d: 'M' + px + ' ' + bBot + ' L' + px + ' ' + bTop + ' L' + land + ' ' + bAtLand + ' L' + land + ' ' + bBot + ' Z', fill: C.p, opacity: 0.9 }, svg);
+    el('path', { d: 'M' + land + ' ' + bAtLand + ' L' + (px + 260) + ' ' + bBot, fill: 'none', stroke: C.p, 'stroke-width': 3, 'stroke-dasharray': '6 6', opacity: 0.6 }, svg);
+    press(svg, px, bTop - 40, null); label(svg, px - 44, bTop - 30, '누름', C.p, 26, 'end');
+    // 코요테: 공중에서는 0, 착지하면 가득 → 점프하며 0
+    el('rect', { x: land, y: rowA - 40, width: 14, height: 80, fill: C.y, opacity: 0.9 }, svg);
+    el('rect', { x: land + 14, y: rowA - 40, width: 80, height: 80, fill: 'none', stroke: C.y, 'stroke-width': 3, 'stroke-dasharray': '6 6', opacity: 0.6 }, svg);
+    el('line', { x1: x0, y1: rowA + 40, x2: land, y2: rowA + 40, stroke: C.y, 'stroke-width': 4 }, svg);
+    // 겹친 순간
+    el('line', { x1: land, y1: top + 26, x2: land, y2: h - 30, stroke: C.txt, 'stroke-width': 4, 'stroke-dasharray': '10 8' }, svg);
+    label(svg, land + 116, rowA - 6, '착지한 프레임: 둘 다 > 0', C.txt, 26, 'start');
+    label(svg, land + 116, rowA + 30, '→ 점프! 그리고 둘 다 0', C.y, 26, 'start');
+    label(svg, land + 116, rowB + 10, '점선 = 비우지 않았다면', C.dim, 24, 'start');
+    label(svg, x1, h - 16, '시간 →', C.dim, 24, 'end');
+  };
+
+  document.querySelectorAll('svg[data-scene]').forEach(function (svg) { S[svg.dataset.scene](svg); });
+
+  var slides = document.querySelectorAll('.slide');
+  slides.forEach(function (s, i) { var pg = s.querySelector('.pg'); if (pg) pg.textContent = String(i + 1).padStart(2,'0') + ' / ' + String(slides.length).padStart(2,'0'); });
+  var n = parseInt(location.hash.slice(1), 10);
+  if (n && slides[n - 1]) { document.body.classList.add('single'); slides[n - 1].classList.add('on'); }
+})();
+</script>
+</body>
+</html>
