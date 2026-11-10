@@ -190,12 +190,12 @@ button { font: inherit; color: inherit; }
 </div>
 
 <script>
-const DATA = {"news": [{"id": "얼굴-그림자", "slides": 8, "game": "Hi-Fi RUSH", "chip": "애니풍 얼굴 그림자 · threshold map", "head": "이 얼굴 그림자,<br><c>빛을 계산</c>하지 않아요", "headPlain": "이 얼굴 그림자, 빛을 계산하지 않아요", "sub": "빛이 돈 각도에 맞춰 미리 그려 둔 그림자 모양을 골라 쓰는 이야기예요.", "src": "하이파이 러시 GDC 2024 발표 [41:36]~[51:12]", "label": "렌더링", "topic": "NPR 렌더링", "dim": "3D", "tech": "", "field": "렌더링", "techName": "SDF 그림자 텍스처와 연출용 그림자", "explain": ""}, {"id": "코요테-타임", "slides": 8, "game": "Celeste", "chip": "코요테 타임 · 입력 버퍼", "head": "이 점프, 사실<br><c>허공에서</c> 뛰었어요", "headPlain": "이 점프, 사실 허공에서 뛰었어요", "sub": "발판을 떠난 뒤에 눌러도 점프를 받아 주는 두 타이머 이야기예요.", "src": "셀레스테 공개 소스(Player.cs)", "label": "조작감", "topic": "움직임·조작감", "dim": "공용", "tech": "", "field": "디자인", "techName": "코요테 타임·입력 버퍼", "explain": ""}], "queue": []};
+const DATA = {"news": [{"id": "얼굴-그림자", "slides": 8, "game": "Hi-Fi RUSH", "chip": "애니풍 얼굴 그림자 · threshold map", "head": "이 얼굴 그림자,<br><c>빛을 계산</c>하지 않아요", "headPlain": "이 얼굴 그림자, 빛을 계산하지 않아요", "sub": "빛이 돈 각도에 맞춰 미리 그려 둔 그림자 모양을 골라 쓰는 이야기예요.", "src": "하이파이 러시 GDC 2024 발표 [41:36]~[51:12]", "label": "렌더링", "topic": "NPR 렌더링", "dim": "3D", "tech": "", "field": "렌더링", "techName": "SDF 그림자 텍스처와 연출용 그림자", "explain": ""}, {"id": "주문-VFX", "slides": 8, "game": "파이어볼 주문", "chip": "플립북 · 빌보드 · 파티클", "head": "이 불덩이, 사실<br><c>납작한 사각형</c>이에요", "headPlain": "이 불덩이, 사실 납작한 사각형이에요", "sub": "카메라를 보는 사각형 몇 장과 코드로 주문 하나를 만드는 구조예요.", "src": "유튜브 Can It Code? 「AI Can Now Make Game VFX」(2026) · 그림은 브라우저 재현", "label": "VFX", "topic": "VFX", "dim": "3D", "tech": "", "field": "렌더링", "techName": "주문 VFX 부품 분해", "explain": ""}, {"id": "코요테-타임", "slides": 8, "game": "Celeste", "chip": "코요테 타임 · 입력 버퍼", "head": "이 점프, 사실<br><c>허공에서</c> 뛰었어요", "headPlain": "이 점프, 사실 허공에서 뛰었어요", "sub": "발판을 떠난 뒤에 눌러도 점프를 받아 주는 두 타이머 이야기예요.", "src": "셀레스테 공개 소스(Player.cs)", "label": "조작감", "topic": "움직임·조작감", "dim": "공용", "tech": "", "field": "디자인", "techName": "코요테 타임·입력 버퍼", "explain": ""}], "queue": []};
 const $ = s => document.querySelector(s);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 // 주제 색. 새 주제는 cardnews_hub.py TOPICS와 여기에 같이 더한다
 const TOPIC_COLOR = {'움직임·조작감': '#FF7A33', 'NPR 렌더링': '#7C9CFF', '게임 공통': '#FBBF24', '최적화': '#A3E635',
-  '멀티플레이': '#38BDF8', 'AI': '#C084FC', '물리': '#4FD1C5', '절차 생성': '#F472B6'};
+  '멀티플레이': '#38BDF8', 'AI': '#C084FC', '물리': '#4FD1C5', '절차 생성': '#F472B6', 'VFX': '#F87171'};
 const DIM_LABEL = {'3D': '3D', '2D 픽셀': '2D 픽셀', '공용': '2D·3D 공용'};
 const fieldOf = n => n.topic;
 const color = f => TOPIC_COLOR[f] || `var(--f-${f}, var(--dim))`;

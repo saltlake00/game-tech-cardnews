@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="cardnews-topic" content="VFX">
+<meta name="cardnews-dim" content="3D">
+<title>카드뉴스 — 주문 VFX를 부품으로 나누기</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap">
+<style>
+html, body { margin: 0; padding: 0; background: #D9D4C8; }
+body { display: flex; flex-direction: column; align-items: center; gap: 40px; padding: 40px 0; }
+body.single { padding: 0; gap: 0; }
+body.single .slide { display: none; }
+body.single .slide.on { display: flex; }
+
+.slide {
+  width: 1080px; height: 1350px; box-sizing: border-box; flex: none;
+  padding: 60px 64px 44px; display: flex; flex-direction: column;
+  position: relative; overflow: hidden;
+  background: #F6F3EC; color: #17181C;
+  font-family: 'Noto Sans KR', 'Malgun Gothic', sans-serif;
+}
+.tag { align-self: flex-start; font-size: 26px; font-weight: 700; color: #F6F3EC; background: #17181C; border-radius: 999px; padding: 6px 22px; }
+.tag b { color: #FFD43B; margin-right: 10px; }
+.head { margin-top: 22px; font-size: 70px; font-weight: 900; line-height: 1.22; letter-spacing: -0.02em; }
+c { color: #E8590C; }
+.stage { margin-top: 28px; flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; }
+.stage svg { width: 952px; height: auto; max-height: 100%; display: block; border-radius: 28px; }
+.band { margin-top: 26px; background: #17181C; color: #F1F3F8; border-radius: 26px; padding: 30px 38px; font-size: 34px; line-height: 1.55; font-weight: 500; word-break: keep-all; }
+.band y { color: #FFD43B; font-weight: 700; }
+.band p2 { color: #FF6B9A; font-weight: 700; }
+.band small { display: block; margin-top: 10px; font-size: 24px; color: #8D94A8; }
+.foot { margin-top: 20px; display: flex; justify-content: space-between; font-size: 24px; color: #6B6A66; font-weight: 500; }
+.foot .pg { font-weight: 900; color: #17181C; }
+
+/* 재현 캡처 */
+.shot { position: relative; width: 952px; border-radius: 28px; overflow: hidden; background: #0E1016; }
+.shot img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.shot .lb { position: absolute; left: 18px; top: 16px; font-size: 26px; font-weight: 900; color: #17181C; background: #FFD43B; border-radius: 10px; padding: 4px 14px; }
+.shot .lb.dim { background: #F6F3EC; }
+.col2 { display: flex; flex-direction: column; gap: 18px; width: 952px; height: 100%; }
+.col2 .shot { flex: 1; min-height: 0; }
+.grid4 { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 16px; width: 952px; height: 100%; }
+.grid4 .shot { width: auto; border-radius: 22px; }
+
+/* 표지 */
+.slide.cover { padding: 0; background: #0E1016; color: #F6F3EC; }
+.cv-img { position: absolute; left: 0; top: 0; width: 1080px; height: 1350px; object-fit: cover; object-position: 50% 30%; }
+.slide.cover::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 720px;
+  background: linear-gradient(to bottom, rgba(14,16,22,0) 0%, rgba(14,16,22,.86) 34%, #0E1016 58%); }
+.cv-top { position: relative; z-index: 2; display: flex; justify-content: space-between; align-items: center; padding: 56px 64px 0; }
+.cv-brand { display: flex; align-items: center; font-size: 34px; font-weight: 900; }
+.cv-brand span { font-size: 24px; font-weight: 700; color: #B9BFCE; margin-left: 18px; padding-left: 18px; border-left: 3px solid #4A5068; letter-spacing: .04em; }
+.cv-pg { font-size: 24px; font-weight: 900; color: #17181C; background: #F6F3EC; border-radius: 999px; padding: 6px 18px; }
+.cv-game { position: relative; z-index: 2; margin: 30px 64px 0; font-size: 64px; font-weight: 900; letter-spacing: -0.01em; text-shadow: 0 2px 18px rgba(0,0,0,.6); }
+.cv-chip { position: relative; z-index: 2; align-self: flex-start; margin: 18px 64px 0; font-size: 26px; font-weight: 700; color: #17181C; background: #F6F3EC; border-radius: 10px; padding: 6px 16px; }
+.cv-bottom { position: absolute; z-index: 2; left: 64px; right: 64px; bottom: 58px; }
+.cv-head { font-size: 92px; font-weight: 900; line-height: 1.18; letter-spacing: -0.025em; color: #FFFFFF; }
+.cv-head c { color: #FF7A33; }
+.cv-sub { margin-top: 26px; font-size: 34px; line-height: 1.5; font-weight: 500; color: #D5D9E3; }
+.cv-src { margin-top: 22px; font-size: 22px; color: #8D94A8; }
+
+.nums { margin-top: 30px; flex: 1; display: grid; grid-template-columns: 1fr; gap: 20px; align-content: start; }
+.num { background: #FFFFFF; border: 3px solid #17181C; border-radius: 22px; padding: 22px 28px; display: grid; grid-template-columns: 300px 1fr; align-items: center; gap: 6px 24px; }
+.num b { font-size: 60px; font-weight: 900; color: #E8590C; line-height: 1.1; grid-row: 1 / 3; }
+.num span { font-size: 32px; font-weight: 900; }
+.num i { font-style: normal; font-size: 26px; color: #4A4945; line-height: 1.45; word-break: keep-all; }
+
+.sum { margin: 30px 0 0; padding: 0; list-style: none; counter-reset: n; flex: 1; }
+.sum li { counter-increment: n; display: flex; align-items: center; gap: 22px; background: #FFFFFF; border: 3px solid #17181C; border-radius: 22px; padding: 34px 30px; margin-bottom: 22px; font-size: 36px; font-weight: 700; }
+.sum li::before { content: counter(n); flex: none; width: 56px; height: 56px; border-radius: 50%; background: #17181C; color: #FFD43B; font-weight: 900; display: flex; align-items: center; justify-content: center; }
+.sum li c { font-weight: 900; }
+.sum li i { margin-left: auto; font-style: normal; font-size: 24px; color: #6B6A66; font-weight: 500; white-space: nowrap; }
+</style>
+</head>
+<body>
+
+<section class="slide cover">
+  <img class="cv-img" src="img/06-폭발.png" alt="">
+  <div class="cv-top">
+    <div class="cv-brand"><b>게임 기법</b><span>VFX</span></div>
+    <div class="cv-pg pg"></div>
+  </div>
+  <div class="cv-game">파이어볼 주문</div>
+  <div class="cv-chip">플립북 · 빌보드 · 파티클</div>
+  <div class="cv-bottom">
+    <div class="cv-head">이 불덩이, 사실<br><c>납작한 사각형</c>이에요</div>
+    <div class="cv-sub">카메라를 보는 사각형 몇 장과 코드로<br>주문 하나를 만드는 구조예요.</div>
+    <div class="cv-src">자료: 유튜브 Can It Code? 「AI Can Now Make Game VFX」(2026) · 그림은 브라우저 재현</div>
+  </div>
+</section>
+
+<section class="slide">
+  <div class="tag"><b>02</b>문제</div>
+  <div class="head">불꽃 영상 한 편은<br><c>한 방향</c>에서만 맞아요</div>
+  <div class="stage">
+    <svg viewBox="0 0 952 700" xmlns="http://www.w3.org/2000/svg" font-family="Noto Sans KR">
+      <rect width="952" height="700" rx="28" fill="#1B1F2D"/>
+      <g stroke="#232838" stroke-width="2"><path d="M56 0V700M112 0V700M168 0V700M224 0V700M280 0V700M336 0V700M392 0V700M448 0V700M504 0V700M560 0V700M616 0V700M672 0V700M728 0V700M784 0V700M840 0V700M896 0V700M0 56H952M0 112H952M0 168H952M0 224H952M0 280H952M0 336H952M0 392H952M0 448H952M0 504H952M0 560H952M0 616H952M0 672H952"/></g>
+      <text x="40" y="58" font-size="26" font-weight="700" fill="#8D94A8">위에서 내려다본 전장</text>
+      <circle cx="476" cy="380" r="30" fill="#C9CED8"/>
+      <text x="476" y="446" text-anchor="middle" font-size="24" font-weight="700" fill="#C9CED8">시전자</text>
+      <g stroke-width="6" stroke-linecap="round" fill="none">
+        <path d="M512 380H800" stroke="#FFD43B"/><path d="M780 362L804 380L780 398" stroke="#FFD43B"/>
+        <path d="M450 356L250 190" stroke="#FF6B9A" stroke-dasharray="14 10"/>
+        <path d="M476 344V130" stroke="#FF6B9A" stroke-dasharray="14 10"/>
+        <path d="M446 400L240 560" stroke="#FF6B9A" stroke-dasharray="14 10"/>
+        <path d="M506 404L700 580" stroke="#FF6B9A" stroke-dasharray="14 10"/>
+      </g>
+      <rect x="812" y="330" width="100" height="100" rx="10" fill="#FF7A33" opacity=".9"/>
+      <text x="862" y="388" text-anchor="middle" font-size="24" font-weight="900" fill="#17181C">영상</text>
+      <text x="862" y="470" text-anchor="middle" font-size="24" font-weight="700" fill="#FFD43B">이 방향만 맞음</text>
+      <g font-size="24" font-weight="700" fill="#FF6B9A"><text x="190" y="170">?</text><text x="466" y="112">?</text><text x="214" y="600">?</text><text x="708" y="620">?</text></g>
+    </svg>
+  </div>
+  <div class="band">게임 주문은 원래 몇 장짜리 그림을 차례로 트는 작은 영상이에요. 그런데 위에서 내려다보는 3D 게임에서는 주문이 <p2>아무 방향으로나</p2> 날아가 어디서든 맞아야 해요.</div>
+  <div class="foot"><span>자료: 「AI Can Now Make Game VFX」 [03:06]</span><span class="pg"></span></div>
+</section>
+
+<section class="slide">
+  <div class="tag"><b>03</b>핵심 아이디어</div>
+  <div class="head">주문 하나를<br><c>부품 세 종류</c>로 나눠요</div>
+  <div class="stage">
+    <svg viewBox="0 0 952 700" xmlns="http://www.w3.org/2000/svg" font-family="Noto Sans KR">
+      <rect width="952" height="700" rx="28" fill="#1B1F2D"/>
+      <g font-weight="900">
+        <rect x="40" y="60" width="272" height="420" rx="22" fill="#232838" stroke="#FF7A33" stroke-width="4"/>
+        <text x="176" y="118" text-anchor="middle" font-size="36" fill="#FF7A33">플립북</text>
+        <g fill="#FF9A4D"><rect x="86" y="160" width="50" height="50" rx="8"/><rect x="151" y="160" width="50" height="50" rx="8" opacity=".85"/><rect x="216" y="160" width="50" height="50" rx="8" opacity=".7"/><rect x="86" y="225" width="50" height="50" rx="8" opacity=".85"/><rect x="151" y="225" width="50" height="50" rx="8" opacity=".7"/><rect x="216" y="225" width="50" height="50" rx="8" opacity=".55"/></g>
+        <text x="176" y="340" text-anchor="middle" font-size="28" fill="#F1F3F8">불 · 연기 · 폭발</text>
+        <text x="176" y="390" text-anchor="middle" font-size="24" font-weight="700" fill="#8D94A8">그림을 차례로 튼다</text>
+
+        <rect x="340" y="60" width="272" height="420" rx="22" fill="#232838" stroke="#FFD43B" stroke-width="4"/>
+        <text x="476" y="118" text-anchor="middle" font-size="36" fill="#FFD43B">코드</text>
+        <g fill="#FFD43B"><circle cx="420" cy="200" r="7"/><circle cx="460" cy="180" r="5"/><circle cx="500" cy="215" r="6"/><circle cx="535" cy="190" r="4"/><circle cx="445" cy="245" r="4"/><circle cx="520" cy="255" r="5"/></g>
+        <circle cx="476" cy="225" r="54" fill="none" stroke="#FFD43B" stroke-width="3" stroke-dasharray="6 8"/>
+        <text x="476" y="340" text-anchor="middle" font-size="28" fill="#F1F3F8">불꽃 튐 · 빛</text>
+        <text x="476" y="390" text-anchor="middle" font-size="24" font-weight="700" fill="#8D94A8">규칙으로 만든다</text>
+
+        <rect x="640" y="60" width="272" height="420" rx="22" fill="#232838" stroke="#7C9CFF" stroke-width="4"/>
+        <text x="776" y="118" text-anchor="middle" font-size="36" fill="#7C9CFF">3D 모델</text>
+        <path d="M736 260L756 180L800 168L830 214L816 268L768 280Z" fill="#5C6170" stroke="#9AA3C0" stroke-width="3"/>
+        <text x="776" y="340" text-anchor="middle" font-size="28" fill="#F1F3F8">메테오의 바위</text>
+        <text x="776" y="390" text-anchor="middle" font-size="24" font-weight="700" fill="#8D94A8">모양이 있는 것</text>
+      </g>
+      <text x="40" y="550" font-size="26" font-weight="700" fill="#8D94A8">시간 →</text>
+      <g font-size="22" font-weight="700">
+        <rect x="140" y="530" width="260" height="30" rx="8" fill="#FF7A33"/><text x="150" y="552" fill="#17181C">코어 불꽃</text>
+        <rect x="220" y="575" width="420" height="30" rx="8" fill="#FF9A4D" opacity=".8"/><text x="230" y="597" fill="#17181C">꼬리</text>
+        <rect x="140" y="620" width="560" height="30" rx="8" fill="#FFD43B"/><text x="150" y="642" fill="#17181C">따라가는 빛</text>
+        <rect x="650" y="530" width="230" height="30" rx="8" fill="#FF6B9A"/><text x="660" y="552" fill="#17181C">맞으면 폭발</text>
+      </g>
+    </svg>
+  </div>
+  <div class="band">부품마다 순서와 타이밍이 따로 있어요. 영상 제작자는 결국 <y>주문의 대부분은 코드</y>이고, 어려운 것은 살아 있는 그림(불·폭발·연기)이라고 정리해요.</div>
+  <div class="foot"><span>자료: 「AI Can Now Make Game VFX」 [03:41] [03:49] [05:29]</span><span class="pg"></span></div>
+</section>
+
+<section class="slide">
+  <div class="tag"><b>04</b>원리 ① 플립북</div>
+  <div class="head">64장 그림을<br><c>차례로</c> 틀어요</div>
+  <div class="stage"><div class="shot" style="height:100%"><img src="img/07-아틀라스.png" alt="8x8 플립북 아틀라스" style="object-fit:contain;background:#000"><span class="lb">8 × 8 = 64장</span></div></div>
+  <div class="band">한 장에 8×8칸으로 그림을 모아 두고, 칸을 하나씩 넘기며 사각형에 붙여요. 영상 속 파이어볼의 플립북도 <y>64장</y>이에요.<small>그림은 직접 만든 재현본이에요. 그림 대신 코드(노이즈)로 불 64장을 구웠어요</small></div>
+  <div class="foot"><span>자료: 「AI Can Now Make Game VFX」 [04:25]</span><span class="pg"></span></div>
+</section>
+
+<section class="slide">
+  <div class="tag"><b>05</b>원리 ② 빌보드</div>
+  <div class="head">텍스처를 끄면<br><c>사각형</c>만 남아요</div>
+  <div class="stage"><div class="col2">
+    <div class="shot"><img src="img/02-근접.png" alt="텍스처를 켠 파이어볼"><span class="lb">텍스처 켬</span></div>
+    <div class="shot"><img src="img/03-텍스처끔.png" alt="텍스처를 끈 파이어볼"><span class="lb dim">텍스처 끔</span></div>
+  </div></div>
+  <div class="band">사각형은 늘 카메라 쪽으로 돌아서 어느 방향에서 봐도 둥글어요. 코어는 사각형 <y>여러 장을 겹치고</y>, 꼬리는 작은 사각형이 0.1초 만에 줄어들며 사라져요.</div>
+  <div class="foot"><span>자료: 「AI Can Now Make Game VFX」 [04:25] [04:57]</span><span class="pg"></span></div>
+</section>
+
+<section class="slide">
+  <div class="tag"><b>06</b>원리 ③ 부품 쌓기</div>
+  <div class="head">부품을 하나씩<br><c>더해</c> 보면</div>
+  <div class="stage"><div class="grid4">
+    <div class="shot"><img src="img/08-부품1-코어.png" alt=""><span class="lb">① 코어</span></div>
+    <div class="shot"><img src="img/09-부품2-꼬리.png" alt=""><span class="lb">② + 꼬리</span></div>
+    <div class="shot"><img src="img/10-부품3-불씨.png" alt=""><span class="lb">③ + 불씨</span></div>
+    <div class="shot"><img src="img/02-근접.png" alt=""><span class="lb">④ + 빛</span></div>
+  </div></div>
+  <div class="band">마지막에 진짜 라이트가 공을 따라가며 <y>바닥을 비춰요</y>. 영상의 파이어볼은 이미터 4개(Core, Flames behind it, Red streak, Embers)로 되어 있어요.</div>
+  <div class="foot"><span>자료: 「AI Can Now Make Game VFX」 [04:57] · 화면 05:12</span><span class="pg"></span></div>
+</section>
+
+<section class="slide">
+  <div class="tag"><b>07</b>살아 있는 그림 만들기</div>
+  <div class="head">불 그림은<br><c>세 가지</c>로 만들어 봤어요</div>
+  <div class="nums">
+    <div class="num"><b>약 3달러</b><span>AI 영상</span><i>그림 한 장을 짧은 영상으로 만들고 잘라서 플립북으로. 가장 사실적이에요</i></div>
+    <div class="num"><b>추가 0원</b><span>GPT 그림</span><i>플립북 시트를 그림 한 장으로 그려요(구독). 영상에 꽤 가까워요</i></div>
+    <div class="num"><b>0원</b><span>코드만</span><i>그림 없이 코드로 그려요. 가장 덜 사실적이라 그런 스타일에 맞아요</i></div>
+  </div>
+  <div class="band">영상 한 편은 50센트~1달러, 주문 하나에 약 3달러가 들었다고 해요. 사실감이 중요하면 영상, 빠른 시험은 GPT, <y>스타일화된 효과</y>는 코드를 권해요.</div>
+  <div class="foot"><span>자료: 「AI Can Now Make Game VFX」 [06:26] [07:09] [08:10]</span><span class="pg"></span></div>
+</section>
+
+<section class="slide">
+  <div class="tag"><b>08</b>정리</div>
+  <div class="head">한 장으로<br><c>정리</c>해요</div>
+  <ol class="sum">
+    <li><span><c>영상 한 편</c> 대신 부품으로 나누기</span><i>플립북·코드·모델</i></li>
+    <li><span><c>카메라를 보는</c> 사각형에 플립북</span><i>빌보드</i></li>
+    <li><span><c>작은 사각형</c>을 뿌려 꼬리·불씨</span><i>파티클</i></li>
+    <li><span><c>진짜 라이트</c>로 바닥까지</span><i>따라가는 빛</i></li>
+  </ol>
+  <div class="band">브라우저(Three.js)로 재현하니 날아가는 공 하나가 <y>사각형 44장</y>이었어요. 폭발하는 순간에는 72장이 돼요.<small>꼬리 초당 240장 · 수명 0.1초 · 불씨 초당 40장. 구현 글에서 직접 쏴 볼 수 있어요</small></div>
+  <div class="foot"><span>출처: 유튜브 Can It Code? 「AI Can Now Make Game VFX」(2026)</span><span class="pg"></span></div>
+</section>
+
+<script>
+(function () {
+  var slides = document.querySelectorAll('.slide');
+  slides.forEach(function (s, i) { var pg = s.querySelector('.pg'); if (pg) pg.textContent = String(i + 1).padStart(2,'0') + ' / ' + String(slides.length).padStart(2,'0'); });
+  var n = parseInt(location.hash.slice(1), 10);
+  if (n && slides[n - 1]) { document.body.classList.add('single'); slides[n - 1].classList.add('on'); }
+})();
+</script>
+</body>
+</html>

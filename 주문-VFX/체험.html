@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>주문 VFX 재현</title>
+<style>
+:root { --bg:#0E1016; --panel:rgba(20,23,32,.88); --line:#2B3042; --txt:#E9ECF3; --dim:#8D94A8; --acc:#FF7A33; }
+html,body { margin:0; height:100%; background:var(--bg); color:var(--txt); font-family:'Noto Sans KR','Malgun Gothic',sans-serif; overflow:hidden; }
+#c { position:fixed; inset:0; width:100%; height:100%; display:block; }
+#ui { position:fixed; left:16px; top:16px; width:270px; max-width:calc(100vw - 32px); box-sizing:border-box; background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:14px 16px; font-size:14px; line-height:1.5; }
+#ui h1 { font-size:16px; margin:0 0 4px; cursor:pointer; user-select:none; }
+#ui h1::after { content:' 접기'; font-size:12px; color:var(--dim); font-weight:500; }
+#ui.mini { width:auto; right:auto; padding:8px 12px; }
+#ui.mini > *:not(h1) { display:none; }
+#ui.mini h1 { margin:0; }
+#ui.mini h1::after { content:' 펼치기'; }
+#ui p { margin:0 0 10px; color:var(--dim); font-size:12.5px; }
+#ui label { display:flex; align-items:center; gap:8px; margin:3px 0; cursor:pointer; }
+#ui .row { display:flex; gap:6px; margin-top:8px; flex-wrap:wrap; }
+#ui button { flex:1; background:#232838; color:var(--txt); border:1px solid var(--line); border-radius:8px; padding:5px 6px; font:inherit; font-size:13px; cursor:pointer; }
+#ui button.on { border-color:var(--acc); color:var(--acc); }
+#ui input[type=range] { width:100%; }
+#ui .k { display:flex; justify-content:space-between; color:var(--dim); font-size:12.5px; margin-top:8px; }
+#ui .k b { color:var(--txt); font-weight:700; }
+#stats { margin-top:10px; padding-top:8px; border-top:1px solid var(--line); font-size:12.5px; color:var(--dim); font-variant-numeric:tabular-nums; }
+#stats b { color:var(--txt); }
+#atlas { position:fixed; right:16px; top:16px; width:256px; height:256px; border:1px solid var(--line); border-radius:10px; background:#000; display:none; }
+#atlasCap { position:fixed; right:16px; top:278px; width:256px; text-align:center; color:var(--dim); font-size:12px; display:none; }
+@media (max-width:600px){ #ui:not(.mini) { width:auto; right:16px; font-size:13px; } #atlas,#atlasCap{ display:none !important; } }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="ui">
+  <h1>주문 VFX 부품 분해</h1>
+  <p>바닥을 누르면 그 방향으로 파이어볼을 쏩니다.</p>
+  <label><input type="checkbox" id="tex" checked> 텍스처 (끄면 사각형만)</label>
+  <label><input type="checkbox" id="core" checked> 코어 · 사각형 3장</label>
+  <label><input type="checkbox" id="tail" checked> 꼬리 · 작은 사각형</label>
+  <label><input type="checkbox" id="embers" checked> 불씨 · 코드 점</label>
+  <label><input type="checkbox" id="light" checked> 따라가는 라이트</label>
+  <label><input type="checkbox" id="auto" checked> 자동 발사</label>
+  <div class="k"><span>꼬리 생성량</span><b id="rateV">240 /초</b></div>
+  <input type="range" id="rate" min="0" max="480" step="2" value="240">
+  <div class="k"><span>꼬리 수명</span><b id="lifeV">0.10초</b></div>
+  <input type="range" id="life" min="0.02" max="0.6" step="0.01" value="0.1">
+  <div class="row"><button id="camTop" class="on">게임 카메라</button><button id="camSide">옆</button><button id="atlasBtn">아틀라스</button></div>
+  <div id="stats">사각형 <b id="sQuads">0</b> · FPS <b id="sFps">0</b><br>아틀라스 굽기 <b id="sBake">-</b></div>
+</div>
+<canvas id="atlas" width="1024" height="1024"></canvas>
+<div id="atlasCap">코드로 구운 플립북 8×8 = 64장</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function () {
+'use strict';
+var Q = new URLSearchParams(location.search);
+var $ = function (id) { return document.getElementById(id); };
+
+/* ---------- 1. 플립북 아틀라스를 코드로 굽기 (8x8, 칸 128px) ---------- */
+var COLS = 8, CELL = 128, FRAMES = COLS * COLS;
+function hash(x, y, z) { var h = Math.sin(x * 127.1 + y * 311.7 + z * 74.7) * 43758.5453; return h - Math.floor(h); }
+function vnoise(x, y, z) {
+  var xi = Math.floor(x), yi = Math.floor(y), zi = Math.floor(z), xf = x - xi, yf = y - yi, zf = z - zi;
+  var u = xf * xf * (3 - 2 * xf), v = yf * yf * (3 - 2 * yf), w = zf * zf * (3 - 2 * zf);
+  function l(a, b, t) { return a + (b - a) * t; }
+  var a = l(l(hash(xi, yi, zi), hash(xi + 1, yi, zi), u), l(hash(xi, yi + 1, zi), hash(xi + 1, yi + 1, zi), u), v);
+  var b = l(l(hash(xi, yi, zi + 1), hash(xi + 1, yi, zi + 1), u), l(hash(xi, yi + 1, zi + 1), hash(xi + 1, yi + 1, zi + 1), u), v);
+  return l(a, b, w);
+}
+function fbm(x, y, z) { var s = 0, a = 0.5; for (var i = 0; i < 4; i++) { s += a * vnoise(x, y, z); x *= 2.03; y *= 2.03; z *= 1.7; a *= 0.5; } return s; }
+function bakeAtlas(cv) {
+  var t0 = performance.now();
+  var ctx = cv.getContext('2d'), img = ctx.createImageData(COLS * CELL, COLS * CELL), d = img.data, W = COLS * CELL;
+  for (var f = 0; f < FRAMES; f++) {
+    var t = f / FRAMES, ox = (f % COLS) * CELL, oy = Math.floor(f / COLS) * CELL;
+    for (var py = 0; py < CELL; py++) for (var px = 0; px < CELL; px++) {
+      var x = (px + 0.5) / CELL * 2 - 1, y = (py + 0.5) / CELL * 2 - 1, r = Math.sqrt(x * x + y * y);
+      // 끊김 없이 되풀이되게 두 시점을 섞는다 (t와 t-1)
+      var n = fbm(x * 2.6, y * 2.6 + t * 2.2, t * 1.3) * (1 - t) + fbm(x * 2.6, y * 2.6 + (t - 1) * 2.2, (t - 1) * 1.3) * t;
+      var den = 1.08 - r * 1.55 + (n - 0.5) * 1.15;
+      den = Math.max(0, Math.min(1, den));
+      var R = Math.min(1, den * 2.2), G = Math.min(1, Math.max(0, den * 1.9 - 0.35)), B = Math.min(1, Math.max(0, den * 2.4 - 1.5));
+      var A = Math.min(1, den * 2.4) * (r < 0.98 ? 1 : 0);
+      var i = ((oy + py) * W + ox + px) * 4;
+      d[i] = R * 255; d[i + 1] = G * 255; d[i + 2] = B * 255; d[i + 3] = A * 255;
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+  return performance.now() - t0;
+}
+var atlasCv = $('atlas');
+var bakeMs = bakeAtlas(atlasCv);
+$('sBake').textContent = bakeMs.toFixed(0) + ' ms';
+
+/* ---------- 2. 장면 ---------- */
+var renderer = new THREE.WebGLRenderer({ canvas: $('c'), antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+var scene = new THREE.Scene();
+scene.background = new THREE.Color(0x07080C);
+scene.fog = new THREE.Fog(0x07080C, 26, 48);
+var camera = new THREE.PerspectiveCamera(42, 1, 0.1, 200);
+function resize() { var w = innerWidth, h = innerHeight; renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); }
+addEventListener('resize', resize); resize();
+
+scene.add(new THREE.HemisphereLight(0x6A7390, 0x10121A, 0.32));
+var moon = new THREE.DirectionalLight(0x8090B0, 0.25); moon.position.set(-6, 10, 4); scene.add(moon);
+
+// 바닥: 돌바닥 무늬(캔버스)
+var gcv = document.createElement('canvas'); gcv.width = gcv.height = 256;
+(function () { var g = gcv.getContext('2d'); g.fillStyle = '#4A4E58'; g.fillRect(0, 0, 256, 256);
+  for (var i = 0; i < 4; i++) for (var j = 0; j < 4; j++) { var s = 70 + Math.floor(hash(i, j, 3) * 30); g.fillStyle = 'rgb(' + s + ',' + (s + 2) + ',' + (s + 8) + ')'; g.fillRect(i * 64 + 2, j * 64 + 2, 60, 60); } })();
+var gtex = new THREE.CanvasTexture(gcv); gtex.wrapS = gtex.wrapT = THREE.RepeatWrapping; gtex.repeat.set(15, 15);
+var ground = new THREE.Mesh(new THREE.PlaneGeometry(60, 60), new THREE.MeshStandardMaterial({ map: gtex, roughness: 0.95, metalness: 0 }));
+ground.rotation.x = -Math.PI / 2; scene.add(ground);
+
+// 시전자와 과녁 기둥
+var hero = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.45, 1.6, 16), new THREE.MeshStandardMaterial({ color: 0x8A90A0, roughness: 0.7 }));
+hero.position.y = 0.8; scene.add(hero);
+var pillars = [];
+for (var k = 0; k < 7; k++) {
+  var a = k / 7 * Math.PI * 2 + 0.3, p = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.7, 2.4, 12), new THREE.MeshStandardMaterial({ color: 0x5C6170, roughness: 0.9 }));
+  p.position.set(Math.cos(a) * 9.5, 1.2, Math.sin(a) * 9.5); scene.add(p); pillars.push(p);
+}
+
+/* ---------- 3. 카메라를 향하는 사각형 묶음 (인스턴싱) ---------- */
+var VS = [
+  'attribute vec3 iPos; attribute vec4 iData; attribute vec3 iCol;',
+  'varying vec2 vUv; varying float vA; varying vec3 vC; varying float vF;',
+  'void main(){',
+  '  float c = cos(iData.w), s = sin(iData.w);',
+  '  vec2 q = mat2(c, s, -s, c) * position.xy * iData.x;',
+  '  vec4 mv = modelViewMatrix * vec4(iPos, 1.0);',
+  '  mv.xy += q;', // 뷰 공간에서 펼친다 = 늘 카메라를 향한다
+  '  gl_Position = projectionMatrix * mv;',
+  '  vUv = uv; vA = iData.z; vC = iCol; vF = iData.y;',
+  '}'].join('\n');
+var FS = [
+  'uniform sampler2D map; uniform float cols; uniform float texOn; uniform float useMap;',
+  'varying vec2 vUv; varying float vA; varying vec3 vC; varying float vF;',
+  'void main(){',
+  '  vec4 t;',
+  '  if (useMap > 0.5) { float f = floor(vF); vec2 cell = vec2(mod(f, cols), cols - 1.0 - floor(f / cols)); t = texture2D(map, (cell + vUv) / cols); }',
+  '  else { float d = length(vUv - 0.5) * 2.0; t = vec4(1.0, 1.0, 1.0, pow(max(0.0, 1.0 - d), 2.0)); }',
+  '  vec4 col = vec4(t.rgb * vC, t.a * vA);',
+  '  if (texOn < 0.5) { vec2 e = min(vUv, 1.0 - vUv); float edge = step(min(e.x, e.y), 0.045); col = vec4(1.0, 0.28, 0.26, edge * max(vA, 0.35)); }',
+  '  if (col.a < 0.004) discard;',
+  '  gl_FragColor = vec4(col.rgb * col.a, col.a);',
+  '}'].join('\n');
+function Quads(max, useMap) {
+  var g = new THREE.InstancedBufferGeometry(), b = new THREE.PlaneGeometry(1, 1);
+  g.index = b.index; g.setAttribute('position', b.attributes.position); g.setAttribute('uv', b.attributes.uv);
+  this.max = max; this.n = 0;
+  this.pos = new Float32Array(max * 3); this.dat = new Float32Array(max * 4); this.col = new Float32Array(max * 3);
+  this.aPos = new THREE.InstancedBufferAttribute(this.pos, 3); this.aDat = new THREE.InstancedBufferAttribute(this.dat, 4); this.aCol = new THREE.InstancedBufferAttribute(this.col, 3);
+  [this.aPos, this.aDat, this.aCol].forEach(function (x) { x.setUsage(THREE.DynamicDrawUsage); });
+  g.setAttribute('iPos', this.aPos); g.setAttribute('iData', this.aDat); g.setAttribute('iCol', this.aCol);
+  g.instanceCount = 0; this.g = g;
+  var tex = new THREE.CanvasTexture(atlasCv); tex.flipY = true;
+  this.mat = new THREE.ShaderMaterial({ vertexShader: VS, fragmentShader: FS, transparent: true, depthWrite: false,
+    blending: THREE.CustomBlending, blendSrc: THREE.OneFactor, blendDst: THREE.OneFactor,
+    uniforms: { map: { value: tex }, cols: { value: COLS }, texOn: { value: 1 }, useMap: { value: useMap ? 1 : 0 } } });
+  this.mesh = new THREE.Mesh(g, this.mat); this.mesh.frustumCulled = false; scene.add(this.mesh);
+}
+Quads.prototype.push = function (x, y, z, size, frame, alpha, rot, r, gg, bb) {
+  if (this.n >= this.max) return; var i = this.n++;
+  this.pos[i * 3] = x; this.pos[i * 3 + 1] = y; this.pos[i * 3 + 2] = z;
+  this.dat[i * 4] = size; this.dat[i * 4 + 1] = frame; this.dat[i * 4 + 2] = alpha; this.dat[i * 4 + 3] = rot;
+  this.col[i * 3] = r; this.col[i * 3 + 1] = gg; this.col[i * 3 + 2] = bb;
+};
+Quads.prototype.flush = function () { this.g.instanceCount = this.n; this.aPos.needsUpdate = this.aDat.needsUpdate = this.aCol.needsUpdate = true; };
+var fire = new Quads(6000, true), dots = new Quads(3000, false);
+
+/* ---------- 4. 파이어볼 ---------- */
+var LIGHTS = [];
+for (var li = 0; li < 6; li++) { var L = new THREE.PointLight(0xFF7A2E, 0, 7, 2); scene.add(L); LIGHTS.push({ l: L, busy: false }); }
+var balls = [], parts = [];
+var opt = { tex: Q.get('tex') !== '0', core: true, tail: true, embers: true, light: true, auto: Q.get('auto') !== '0', rate: +(Q.get('rate') || 240), life: 0.1 };
+(Q.get('off') || '').split(',').forEach(function (k) { if (k in opt) opt[k] = false; });
+var SPEED = 11, RANGE = 17, H = 1.1;
+
+function fireAt(tx, tz) {
+  var slot = LIGHTS.find(function (s) { return !s.busy; }); if (!slot) return;
+  var dx = tx, dz = tz, len = Math.hypot(dx, dz) || 1;
+  slot.busy = true;
+  balls.push({ x: 0, y: H, z: 0, dx: dx / len, dz: dz / len, dist: 0, acc: 0, eAcc: 0, slot: slot, dead: false, flash: 0, off: Math.random() * 64, rots: [0, 2.1, 4.2].map(function (r) { return r + Math.random(); }) });
+}
+function spawn(o) { parts.push(o); }
+function explode(b) {
+  for (var i = 0; i < 9; i++) { var a = Math.random() * 6.28, s = Math.random() * 1.2;
+    spawn({ m: 'fire', x: b.x + Math.cos(a) * s * 0.3, y: b.y + Math.random() * 0.4, z: b.z + Math.sin(a) * s * 0.3, vx: Math.cos(a) * s, vy: 0.6 + Math.random(), vz: Math.sin(a) * s, age: 0, life: 0.38 + Math.random() * 0.12, s0: 1.2, s1: 3.4, f0: Math.random() * 64, fps: 60, rot: Math.random() * 6.28, spin: (Math.random() - 0.5) * 3, a0: 1, a1: 0, c: [1, 0.85, 0.7], g: 0 }); }
+  if (opt.embers) for (var j = 0; j < 46; j++) { var a2 = Math.random() * 6.28, sp = 3 + Math.random() * 6;
+    spawn({ m: 'dot', x: b.x, y: b.y, z: b.z, vx: Math.cos(a2) * sp, vy: 2 + Math.random() * 5, vz: Math.sin(a2) * sp, age: 0, life: 0.4 + Math.random() * 0.5, s0: 0.16, s1: 0.05, f0: 0, fps: 0, rot: 0, spin: 0, a0: 1, a1: 0, c: [1, 0.65, 0.25], g: -14 }); }
+  b.dead = true; b.flash = 0.35;
+}
+function rnd(a, b) { return a + Math.random() * (b - a); }
+
+function update(dt, time) {
+  // 공 이동·충돌
+  balls.forEach(function (b) {
+    if (b.dead) { b.flash -= dt; return; }
+    var st = SPEED * dt; b.x += b.dx * st; b.z += b.dz * st; b.dist += st;
+    for (var i = 0; i < pillars.length; i++) { var p = pillars[i].position; if (Math.hypot(p.x - b.x, p.z - b.z) < 0.95) { explode(b); return; } }
+    if (b.dist > RANGE) { explode(b); return; }
+    // 꼬리: 초당 rate개, 수명 life초 동안 줄어들며 사라짐
+    if (opt.tail) { b.acc += opt.rate * dt;
+      while (b.acc >= 1) { b.acc -= 1; var back = Math.random() * st;
+        spawn({ m: 'fire', x: b.x - b.dx * back + rnd(-0.12, 0.12), y: b.y + rnd(-0.12, 0.12), z: b.z - b.dz * back + rnd(-0.12, 0.12), vx: 0, vy: 0.4, vz: 0, age: 0, life: opt.life, s0: rnd(0.55, 0.8), s1: 0, f0: Math.random() * 64, fps: 0, rot: Math.random() * 6.28, spin: 0, a0: 0.9, a1: 0.5, c: [1, 0.55, 0.32], g: 0 }); } }
+    // 불씨
+    if (opt.embers) { b.eAcc += 40 * dt;
+      while (b.eAcc >= 1) { b.eAcc -= 1;
+        spawn({ m: 'dot', x: b.x, y: b.y, z: b.z, vx: -b.dx * 2 + rnd(-1.5, 1.5), vy: rnd(0.5, 2.5), vz: -b.dz * 2 + rnd(-1.5, 1.5), age: 0, life: rnd(0.3, 0.6), s0: 0.13, s1: 0.03, f0: 0, fps: 0, rot: 0, spin: 0, a0: 1, a1: 0, c: [1, 0.7, 0.3], g: -6 }); } }
+  });
+  // 파티클 수명
+  for (var i = parts.length - 1; i >= 0; i--) { var q = parts[i]; q.age += dt;
+    if (q.age >= q.life) { parts[i] = parts[parts.length - 1]; parts.pop(); continue; }
+    q.vy += q.g * dt; q.x += q.vx * dt; q.y += q.vy * dt; q.z += q.vz * dt; q.rot += q.spin * dt; }
+  // 라이트
+  balls.forEach(function (b) { var L = b.slot.l;
+    if (!b.dead) { L.position.set(b.x, b.y + 0.2, b.z); L.intensity = opt.light ? 2.6 + Math.sin(time * 31) * 0.25 : 0; }
+    else { L.intensity = opt.light ? Math.max(0, b.flash / 0.35) * 6 : 0; } });
+  balls = balls.filter(function (b) { if (b.dead && b.flash <= 0) { b.slot.l.intensity = 0; b.slot.busy = false; return false; } return true; });
+}
+
+function draw(time) {
+  fire.n = dots.n = 0;
+  var tx = opt.tex ? 1 : 0; fire.mat.uniforms.texOn.value = tx; dots.mat.uniforms.texOn.value = tx;
+  // 코어: 사각형 3장 겹침, 플립북 30fps
+  if (opt.core) balls.forEach(function (b) { if (b.dead) return;
+    for (var k = 0; k < 3; k++) fire.push(b.x, b.y, b.z, 1.15 - k * 0.12, (b.off + k * 21 + time * 30) % 64, 1, b.rots[k] + time * (k - 1) * 1.6, 1, 0.9 - k * 0.1, 0.8 - k * 0.15); });
+  parts.forEach(function (q) { var t = q.age / q.life, s = q.s0 + (q.s1 - q.s0) * t, a = q.a0 + (q.a1 - q.a0) * t;
+    var buf = q.m === 'fire' ? fire : dots;
+    buf.push(q.x, q.y, q.z, s, (q.f0 + q.age * q.fps) % 64, a * (q.m === 'fire' && q.s1 === 0 ? (1 - t * 0.5) : 1), q.rot, q.c[0], q.c[1], q.c[2]); });
+  fire.flush(); dots.flush();
+  return fire.n + dots.n;
+}
+
+/* ---------- 5. 카메라·입력·UI ---------- */
+var camMode = Q.get('cam') || 'top';
+function setCam(m) { camMode = m; $('camTop').classList.toggle('on', m === 'top'); $('camSide').classList.toggle('on', m === 'side'); }
+setCam(camMode);
+var lastTarget = { x: 0, y: H, z: 0, dx: 1, dz: 0 };
+function placeCam(time) {
+  var b = balls.find(function (x) { return !x.dead; }) || lastTarget; lastTarget = b;
+  if (camMode === 'near') { camera.position.set(b.x - b.dx * 1.2, 5.2, b.z - b.dz * 1.2 + 3.6); camera.lookAt(b.x - b.dx * 1.2, 0.7, b.z - b.dz * 1.2); }
+  else if (camMode === 'nearside') { camera.position.set(b.x - b.dz * 4.2 - b.dx * 1.0, 1.3, b.z + b.dx * 4.2 - b.dz * 1.0); camera.lookAt(b.x - b.dx * 1.0, 1.0, b.z - b.dz * 1.0); }
+  else if (camMode === 'top') { camera.position.set(0, 15, 10.5); camera.lookAt(0, 0, 0.5); }
+  else { var a = time * 0.25; camera.position.set(Math.cos(a) * 12, 2.2, Math.sin(a) * 12); camera.lookAt(0, 1.1, 0); }
+}
+var ray = new THREE.Raycaster(), mouse = new THREE.Vector2();
+$('c').addEventListener('pointerdown', function (e) {
+  mouse.set(e.clientX / innerWidth * 2 - 1, -(e.clientY / innerHeight) * 2 + 1); ray.setFromCamera(mouse, camera);
+  var hit = ray.intersectObject(ground)[0]; if (hit) fireAt(hit.point.x, hit.point.z);
+});
+function bind(id, key) { var el = $(id); el.checked = opt[key]; el.addEventListener('change', function () { opt[key] = el.checked; }); }
+bind('tex', 'tex'); bind('core', 'core'); bind('tail', 'tail'); bind('embers', 'embers'); bind('light', 'light'); bind('auto', 'auto');
+$('rate').value = opt.rate; $('rateV').textContent = opt.rate + ' /초';
+$('rate').addEventListener('input', function () { opt.rate = +this.value; $('rateV').textContent = opt.rate + ' /초'; });
+$('life').addEventListener('input', function () { opt.life = +this.value; $('lifeV').textContent = opt.life.toFixed(2) + '초'; });
+$('camTop').onclick = function () { setCam('top'); }; $('camSide').onclick = function () { setCam('side'); };
+if (Q.get('ui') === '0') $('ui').style.display = 'none';
+$('ui').querySelector('h1').addEventListener('click', function () { $('ui').classList.toggle('mini'); });
+if (innerWidth < 600 || Q.get('mini') === '1') $('ui').classList.add('mini');
+var atlasOn = Q.get('atlas') === '1';
+function setAtlas(v) { atlasOn = v; $('atlas').style.display = $('atlasCap').style.display = v ? 'block' : 'none'; $('atlasBtn').classList.toggle('on', v); }
+setAtlas(atlasOn); $('atlasBtn').onclick = function () { setAtlas(!atlasOn); };
+
+var last = performance.now(), autoT = 0.2, fpsAcc = 0, fpsN = 0, fpsShow = 0, autoIdx = 0;
+window.__vfx = { opt: opt, stats: {} };
+function loop(now) {
+  var dt = Math.min(0.05, (now - last) / 1000); last = now; var time = now / 1000;
+  if (opt.auto) { autoT -= dt; if (autoT <= 0) { autoT = 0.75; var a = (autoIdx++ * 2.39996) % 6.283; fireAt(Math.cos(a) * 10, Math.sin(a) * 10); } }
+  update(dt, time); var nq = draw(time); placeCam(time);
+  renderer.render(scene, camera);
+  fpsAcc += dt; fpsN++; if (fpsAcc > 0.5) { fpsShow = Math.round(fpsN / fpsAcc); fpsAcc = 0; fpsN = 0; }
+  $('sQuads').textContent = nq; $('sFps').textContent = fpsShow;
+  window.__vfx.stats = { quads: nq, fps: fpsShow, balls: balls.length, bakeMs: Math.round(bakeMs) };
+  requestAnimationFrame(loop);
+}
+// 캡처 모드(?t=초): 고정 간격 1/60초로 그 시각까지 돌린 뒤 한 장만 그린다(헤드리스는 rAF가 돌지 않는다)
+if (Q.get('atlasOnly') === '1') { $('ui').style.display = 'none'; $('c').style.display = 'none';
+  var A = $('atlas'); A.style.cssText = 'display:block;position:fixed;inset:0;width:100vmin;height:100vmin;margin:auto;border:0;border-radius:0'; }
+if (Q.has('one')) { opt.auto = false; var od = +Q.get('one') * Math.PI / 180; fireAt(Math.cos(od) * 10, Math.sin(od) * 10); }
+if (Q.has('t')) {
+  var T = +Q.get('t'), steps = Math.round(T * 60), tt = 0;
+  for (var si = 0; si < steps; si++) { tt = si / 60;
+    if (opt.auto) { autoT -= 1 / 60; if (autoT <= 0) { autoT = 0.75; var aa = (autoIdx++ * 2.39996) % 6.283; fireAt(Math.cos(aa) * 10, Math.sin(aa) * 10); } }
+    update(1 / 60, tt); placeCam(tt); }
+  var nq0 = draw(tt); placeCam(Q.has('ct') ? +Q.get('ct') : tt); renderer.render(scene, camera);
+  window.__vfx.stats = { quads: nq0, balls: balls.length, bakeMs: Math.round(bakeMs), mode: 'shot' };
+  $('sQuads').textContent = nq0;
+  (function again() { renderer.render(scene, camera); requestAnimationFrame(again); })();
+} else requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
