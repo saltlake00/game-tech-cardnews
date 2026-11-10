@@ -52,8 +52,12 @@ button { font: inherit; color: inherit; }
 .stat b { display: block; font-family: var(--mono); font-size: 34px; font-weight: 700; }
 .stat span { font-size: 13px; color: var(--dim); }
 
-/* 분야 칩 */
-.chips { display: flex; flex-wrap: wrap; gap: 8px; padding: 8px 0 28px; }
+/* 태그 칩(주제·차원 두 줄) */
+.chips { display: grid; gap: 10px; padding: 8px 0 28px; }
+.chiprow { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.chiplabel { width: 44px; font-size: 13px; color: var(--dim); font-weight: 700; }
+.chip.zero { opacity: .35; }
+.tile .row .dim { font-family: var(--mono); font-size: 11px; color: var(--ink2); border: 1px solid var(--line2); border-radius: 6px; padding: 1px 6px; }
 .chip { height: 34px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--line2); background: transparent; cursor: pointer; font-size: 14px; color: var(--ink2); display: inline-flex; align-items: center; gap: 8px; }
 .chip i { width: 8px; height: 8px; border-radius: 50%; background: var(--c, var(--dim)); }
 .chip em { font-style: normal; font-family: var(--mono); font-size: 12px; color: var(--dim); }
@@ -161,7 +165,7 @@ button { font: inherit; color: inherit; }
     <div class="stats" id="stats"></div>
   </section>
 
-  <nav class="chips" id="chips" aria-label="분야"></nav>
+  <nav class="chips" id="chips" aria-label="태그"></nav>
 
   <section>
     <div class="sec-h"><h2>카드뉴스</h2><span id="shown"></span></div>
@@ -186,33 +190,43 @@ button { font: inherit; color: inherit; }
 </div>
 
 <script>
-const DATA = {"news": [{"id": "얼굴-그림자", "slides": 8, "game": "Hi-Fi RUSH", "chip": "애니풍 얼굴 그림자 · threshold map", "head": "이 얼굴 그림자,<br><c>빛을 계산</c>하지 않아요", "headPlain": "이 얼굴 그림자, 빛을 계산하지 않아요", "sub": "빛이 돈 각도에 맞춰 미리 그려 둔 그림자 모양을 골라 쓰는 이야기예요.", "src": "하이파이 러시 GDC 2024 발표 [41:36]~[51:12]", "label": "렌더링", "tech": "", "field": "렌더링", "techName": "SDF 그림자 텍스처와 연출용 그림자", "explain": ""}, {"id": "코요테-타임", "slides": 8, "game": "Celeste", "chip": "코요테 타임 · 입력 버퍼", "head": "이 점프, 사실<br><c>허공에서</c> 뛰었어요", "headPlain": "이 점프, 사실 허공에서 뛰었어요", "sub": "발판을 떠난 뒤에 눌러도 점프를 받아 주는 두 타이머 이야기예요.", "src": "셀레스테 공개 소스(Player.cs)", "label": "조작감", "tech": "", "field": "디자인", "techName": "코요테 타임·입력 버퍼", "explain": ""}], "queue": []};
+const DATA = {"news": [{"id": "얼굴-그림자", "slides": 8, "game": "Hi-Fi RUSH", "chip": "애니풍 얼굴 그림자 · threshold map", "head": "이 얼굴 그림자,<br><c>빛을 계산</c>하지 않아요", "headPlain": "이 얼굴 그림자, 빛을 계산하지 않아요", "sub": "빛이 돈 각도에 맞춰 미리 그려 둔 그림자 모양을 골라 쓰는 이야기예요.", "src": "하이파이 러시 GDC 2024 발표 [41:36]~[51:12]", "label": "렌더링", "topic": "NPR 렌더링", "dim": "3D", "tech": "", "field": "렌더링", "techName": "SDF 그림자 텍스처와 연출용 그림자", "explain": ""}, {"id": "코요테-타임", "slides": 8, "game": "Celeste", "chip": "코요테 타임 · 입력 버퍼", "head": "이 점프, 사실<br><c>허공에서</c> 뛰었어요", "headPlain": "이 점프, 사실 허공에서 뛰었어요", "sub": "발판을 떠난 뒤에 눌러도 점프를 받아 주는 두 타이머 이야기예요.", "src": "셀레스테 공개 소스(Player.cs)", "label": "조작감", "topic": "움직임·조작감", "dim": "공용", "tech": "", "field": "디자인", "techName": "코요테 타임·입력 버퍼", "explain": ""}], "queue": []};
 const $ = s => document.querySelector(s);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const fieldOf = n => n.field || n.label;
-const color = f => `var(--f-${f}, var(--dim))`;
+// 주제 색. 새 주제는 cardnews_hub.py TOPICS와 여기에 같이 더한다
+const TOPIC_COLOR = {'움직임·조작감': '#FF7A33', 'NPR 렌더링': '#7C9CFF', '게임 공통': '#FBBF24', '최적화': '#A3E635',
+  '멀티플레이': '#38BDF8', 'AI': '#C084FC', '물리': '#4FD1C5', '절차 생성': '#F472B6'};
+const DIM_LABEL = {'3D': '3D', '2D 픽셀': '2D 픽셀', '공용': '2D·3D 공용'};
+const fieldOf = n => n.topic;
+const color = f => TOPIC_COLOR[f] || `var(--f-${f}, var(--dim))`;
 const slideUrl = (id, n) => `${encodeURIComponent(id)}/index.html?s=${n}#${n}`;
-let field = '전체', query = '';
+const sel = {topic: '전체', dim: '전체'};
+let query = '';
 
 // 머리 숫자
 const total = DATA.news.reduce((a, n) => a + n.slides, 0);
-const nFields = new Set(DATA.news.map(fieldOf)).size;
-$('#stats').innerHTML = [[DATA.news.length, '카드뉴스'], [total, '장'], [nFields, '분야']]
+const nTopics = new Set(DATA.news.map(n => n.topic)).size;
+$('#stats').innerHTML = [[DATA.news.length, '카드뉴스'], [total, '장'], [nTopics, '주제']]
   .map(([b, s]) => `<div class="stat"><b>${b}</b><span>${s}</span></div>`).join('');
 
-// 분야 칩: 카드뉴스가 있는 분야를 앞에
-const fields = {};
-DATA.news.forEach(n => fields[fieldOf(n)] = (fields[fieldOf(n)] || 0) + 1);
-const chipList = ['전체', ...Object.keys(fields).sort((a, b) => fields[b] - fields[a])];
+// 태그 칩 두 줄(주제·차원). 칸마다 지금 다른 칸 선택에서 남는 편 수를 보인다
+const counts = key => DATA.news.reduce((o, n) => (o[n[key]] = (o[n[key]] || 0) + 1, o), {});
 function drawChips() {
-  $('#chips').innerHTML = chipList.map(f => `<button class="chip${f === field ? ' on' : ''}" data-f="${esc(f)}" style="--c:${color(f)}">
-    ${f === '전체' ? '' : '<i></i>'}${esc(f)}<em>${f === '전체' ? DATA.news.length : fields[f]}</em></button>`).join('');
+  const row = (key, label, fmt, col) => {
+    const c = counts(key), list = ['전체', ...Object.keys(c).sort((a, b) => c[b] - c[a])];
+    const other = key === 'topic' ? 'dim' : 'topic';
+    const left = v => DATA.news.filter(n => (v === '전체' || n[key] === v) && (sel[other] === '전체' || n[other] === sel[other])).length;
+    return `<div class="chiprow"><span class="chiplabel">${label}</span>` + list.map(v =>
+      `<button class="chip${v === sel[key] ? ' on' : ''}${left(v) ? '' : ' zero'}" data-k="${key}" data-v="${esc(v)}" style="--c:${col(v)}">
+      ${v === '전체' || !col(v) ? '' : '<i></i>'}${esc(v === '전체' ? '전체' : fmt(v))}<em>${left(v)}</em></button>`).join('') + '</div>';
+  };
+  $('#chips').innerHTML = row('topic', '주제', v => v, color) + row('dim', '차원', v => DIM_LABEL[v] || v, () => '');
 }
-$('#chips').addEventListener('click', e => { const b = e.target.closest('.chip'); if (!b) return; field = b.dataset.f; drawChips(); drawGrid(); });
+$('#chips').addEventListener('click', e => { const b = e.target.closest('.chip'); if (!b) return; sel[b.dataset.k] = b.dataset.v; drawChips(); drawGrid(); });
 
 function match(n) {
-  const hay = [n.game, n.chip, n.headPlain, n.sub, n.techName, n.label, n.field].join(' ').toLowerCase();
-  return (field === '전체' || fieldOf(n) === field || n.label === field) && (!query || hay.includes(query));
+  const hay = [n.game, n.chip, n.headPlain, n.sub, n.techName, n.topic, DIM_LABEL[n.dim]].join(' ').toLowerCase();
+  return (sel.topic === '전체' || n.topic === sel.topic) && (sel.dim === '전체' || n.dim === sel.dim) && (!query || hay.includes(query));
 }
 function drawGrid() {
   const list = DATA.news.filter(match);
@@ -221,7 +235,7 @@ function drawGrid() {
     <button class="tile" data-id="${esc(n.id)}" style="--c:${color(fieldOf(n))}">
       <div class="thumb"><iframe loading="lazy" tabindex="-1" title="${esc(n.chip)} 표지" src="${slideUrl(n.id, 1)}"></iframe><span class="n">${n.slides}장</span></div>
       <div class="meta">
-        <div class="row"><i></i><b>${esc(n.label || n.field)}</b>· ${esc(n.game)}</div>
+        <div class="row"><i></i><b>${esc(n.topic)}</b><span class="dim">${esc(DIM_LABEL[n.dim] || n.dim)}</span>· ${esc(n.game)}</div>
         <h3>${esc(n.chip)}</h3>
         <p>${esc(n.headPlain)}</p>
       </div>
@@ -256,7 +270,8 @@ function openViewer(id, n) {
     <p class="sub">${esc(cur.sub)}</p>
     <dl>
       <dt>기법</dt><dd>${esc(cur.techName || cur.chip)}</dd>
-      <dt>분야</dt><dd style="--c:${c}"><i></i>${esc(cur.label)}${cur.field && cur.field !== cur.label ? ' · ' + esc(cur.field) : ''}</dd>
+      <dt>주제</dt><dd style="--c:${c}"><i></i>${esc(cur.topic)}</dd>
+      <dt>차원</dt><dd>${esc(DIM_LABEL[cur.dim] || cur.dim)}</dd>
       <dt>자료</dt><dd>${esc(cur.src)}</dd>
       <dt>장 수</dt><dd>${cur.slides}장</dd>
     </dl>
