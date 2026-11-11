@@ -7,8 +7,6 @@
 <meta property="og:title" content="게임 기법 카드뉴스">
 <meta property="og:description" content="공개 소스와 개발자 발표로 확인한 게임 기법을 카드뉴스로 정리했습니다.">
 <meta property="og:type" content="website">
-<meta property="og:url" content="https://saltlake00.github.io/game-tech-cardnews/">
-<meta property="og:image" content="https://saltlake00.github.io/game-tech-cardnews/preview.webp">
 
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=JetBrains+Mono:wght@500;700&display=swap">
 <style>
@@ -73,8 +71,8 @@ button { font: inherit; color: inherit; }
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 22px; }
 .tile { text-align: left; border: 1px solid var(--line); border-radius: 18px; background: var(--bg2); padding: 0; cursor: pointer; overflow: hidden; display: flex; flex-direction: column; transition: transform .18s, border-color .18s; }
 .tile:hover, .tile:focus-visible { transform: translateY(-4px); border-color: var(--acc); outline: none; }
-.thumb { position: relative; aspect-ratio: 4 / 5; overflow: hidden; background: #1B1F2D; }
-.thumb iframe { position: absolute; left: 0; top: 0; width: 1080px; height: 1350px; border: 0; transform-origin: 0 0; pointer-events: none; }
+.thumb { position: relative; aspect-ratio: 3 / 4; overflow: hidden; background: #1B1F2D; }
+.thumb iframe { position: absolute; left: 0; top: 0; width: 1080px; height: 1440px; border: 0; transform-origin: 0 0; pointer-events: none; }
 .thumb .n { position: absolute; right: 12px; top: 12px; font-family: var(--mono); font-size: 12px; font-weight: 700; background: rgba(14,16,22,.8); border: 1px solid var(--line2); border-radius: 999px; padding: 3px 10px; }
 .tile .meta { padding: 16px 18px 18px; }
 .tile .row { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--dim); }
@@ -103,7 +101,7 @@ button { font: inherit; color: inherit; }
 .track { position: absolute; top: 0; left: 0; height: 100%; display: flex; transition: transform .32s cubic-bezier(.3,.7,.2,1); }
 .cell { flex: none; height: 100%; display: flex; align-items: center; justify-content: center; }
 .frame { position: relative; overflow: hidden; border-radius: 14px; box-shadow: 0 30px 80px rgba(0,0,0,.5); background: #1B1F2D; }
-.frame iframe { position: absolute; left: 0; top: 0; width: 1080px; height: 1350px; border: 0; transform-origin: 0 0; pointer-events: none; }
+.frame iframe { position: absolute; left: 0; top: 0; width: 1080px; height: 1440px; border: 0; transform-origin: 0 0; pointer-events: none; }
 .nav { position: absolute; top: 50%; transform: translateY(-50%); width: 52px; height: 52px; border-radius: 50%; border: 1px solid var(--line2); background: rgba(21,24,33,.9); cursor: pointer; font-size: 22px; z-index: 2; }
 .nav:hover { border-color: var(--acc); }
 .nav:disabled { opacity: .25; cursor: default; }
@@ -125,10 +123,10 @@ button { font: inherit; color: inherit; }
 .keys { margin-top: 14px; font-size: 12px; color: var(--dim); }
 .keys kbd { font-family: var(--mono); border: 1px solid var(--line2); border-radius: 5px; padding: 0 5px; }
 .strip { grid-row: 2; grid-column: 1; display: flex; gap: 10px; justify-content: safe center; align-items: center; padding: 12px 20px 18px; overflow-x: auto; }
-.mini { flex: none; width: 64px; aspect-ratio: 4 / 5; border-radius: 8px; overflow: hidden; position: relative; border: 2px solid transparent; cursor: pointer; padding: 0; background: #1B1F2D; opacity: .5; transition: opacity .15s; }
+.mini { flex: none; width: 64px; aspect-ratio: 3 / 4; border-radius: 8px; overflow: hidden; position: relative; border: 2px solid transparent; cursor: pointer; padding: 0; background: #1B1F2D; opacity: .5; transition: opacity .15s; }
 .mini.on { border-color: var(--acc); opacity: 1; }
 .mini:hover { opacity: 1; }
-.mini iframe { position: absolute; left: 0; top: 0; width: 1080px; height: 1350px; border: 0; transform: scale(.0556); transform-origin: 0 0; pointer-events: none; }
+.mini iframe { position: absolute; left: 0; top: 0; width: 1080px; height: 1440px; border: 0; transform: scale(.0556); transform-origin: 0 0; pointer-events: none; }
 .count { font-family: var(--mono); font-size: 13px; color: var(--ink2); margin-left: 8px; min-width: 64px; }
 
 @media (max-width: 900px) {
@@ -293,9 +291,9 @@ function closeViewer() {
 function layout() {
   if (!cur) return;
   const st = $('#stage'), W = st.clientWidth, H = st.clientHeight;
-  const s = Math.min((H - 40) / 1350, (W - (W < 700 ? 24 : 140)) / 1080, 1);
+  const s = Math.min((H - 40) / 1440, (W - (W < 700 ? 24 : 140)) / 1080, 1);
   document.querySelectorAll('.cell').forEach(c => c.style.width = W + 'px');
-  document.querySelectorAll('.frame').forEach(f => { f.style.width = 1080 * s + 'px'; f.style.height = 1350 * s + 'px'; f.firstElementChild.style.transform = `scale(${s})`; });
+  document.querySelectorAll('.frame').forEach(f => { f.style.width = 1080 * s + 'px'; f.style.height = 1440 * s + 'px'; f.firstElementChild.style.transform = `scale(${s})`; });
   $('#track').style.transition = 'none'; place(); $('#track').offsetWidth; $('#track').style.transition = '';
 }
 function place() { $('#track').style.transform = `translateX(${-(idx - 1) * $('#stage').clientWidth}px)`; }
