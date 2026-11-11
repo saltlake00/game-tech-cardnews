@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DX11 첫 삼각형 실험실</title>
+<style>
+:root { --bg:#0E1016; --panel:rgba(20,23,32,.9); --line:#2B3042; --txt:#E9ECF3; --dim:#8D94A8; --acc:#3DDC84; --warn:#FF6B9A; }
+html,body { margin:0; height:100%; background:var(--bg); color:var(--txt); font-family:'Noto Sans KR','Malgun Gothic',sans-serif; overflow:hidden; }
+#c { position:fixed; inset:0; width:100%; height:100%; display:block; background:#000; }
+#c.px { image-rendering:pixelated; }
+#ui { position:fixed; left:12px; top:12px; width:250px; max-width:calc(100vw - 24px); max-height:calc(100vh - 24px); overflow-y:auto; box-sizing:border-box; background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:12px 14px; font-size:13px; line-height:1.5; }
+#ui h1 { font-size:15px; margin:0 0 6px; cursor:pointer; user-select:none; }
+#ui h1::after { content:' 접기'; font-size:12px; color:var(--dim); font-weight:500; }
+#ui.mini { width:auto; padding:8px 12px; }
+#ui.mini > *:not(h1) { display:none; }
+#ui.mini h1 { margin:0; }
+#ui.mini h1::after { content:' 설정 펼치기'; }
+#ui h2 { font-size:12.5px; margin:10px 0 4px; color:var(--dim); font-weight:700; }
+#ui label { display:flex; align-items:center; gap:7px; margin:2px 0; cursor:pointer; }
+#ui .row { display:flex; gap:6px; flex-wrap:wrap; }
+#ui button { flex:1; background:#232838; color:var(--txt); border:1px solid var(--line); border-radius:8px; padding:5px 6px; font:inherit; font-size:12.5px; cursor:pointer; white-space:nowrap; }
+#ui button.on { border-color:var(--acc); color:var(--acc); }
+#ui input[type=range] { width:100%; margin:2px 0 0; }
+#ui .k { display:flex; justify-content:space-between; color:var(--dim); font-size:12.5px; margin-top:6px; }
+#ui .k b { color:var(--txt); font-weight:700; font-variant-numeric:tabular-nums; }
+#say { position:fixed; left:50%; bottom:14px; transform:translateX(-50%); width:max-content; max-width:calc(100vw - 150px); box-sizing:border-box; background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:8px 14px; font-size:13.5px; line-height:1.5; text-align:center; }
+#say b { color:var(--acc); }
+#say b.no { color:var(--warn); }
+#say small { display:block; color:var(--dim); font-size:12px; font-variant-numeric:tabular-nums; }
+#fs { position:fixed; right:12px; bottom:14px; background:var(--panel); color:var(--txt); border:1px solid var(--line); border-radius:10px; padding:8px 10px; font:inherit; font-size:12.5px; cursor:pointer; }
+.vl { position:fixed; width:26px; height:26px; margin:-13px 0 0 -13px; border-radius:50%; background:#17181C; border:2px solid #FFD43B; color:#FFD43B; font-size:14px; font-weight:900; display:flex; align-items:center; justify-content:center; pointer-events:none; }
+#arrow { position:fixed; inset:0; width:100%; height:100%; pointer-events:none; }
+/* 넓은 화면: 설정 칸이 삼각형을 가리지 않게 왼쪽 기둥으로 둔다 */
+body.side #c, body.side #arrow { left:250px; width:calc(100% - 250px); }
+body.side #ui { left:0; top:0; bottom:0; max-height:none; border-radius:0; border-width:0 1px 0 0; }
+body.side #ui h1 { cursor:default; }
+body.side #ui h1::after { content:''; }
+body.side #say { left:calc(250px + (100% - 250px) / 2); max-width:calc(100vw - 400px); }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<svg id="arrow"><defs><marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#FFD43B"/></marker></defs><path id="ap" fill="none" stroke="#FFD43B" stroke-width="2.5" stroke-dasharray="7 6" marker-end="url(#ah)"/></svg>
+<div class="vl" id="v0">0</div><div class="vl" id="v1">1</div><div class="vl" id="v2">2</div>
+
+<div id="ui">
+  <h1 id="uiT">첫 삼각형 실험실</h1>
+  <h2>인덱스 버퍼 (점을 잇는 순서)</h2>
+  <div class="row"><button data-order="012">0 → 1 → 2</button><button data-order="021">0 → 2 → 1</button></div>
+  <label><input type="checkbox" id="cull" checked>뒷면 버리기 (CULL_BACK)</label>
+
+  <h2>월드 행렬 (삼각형 돌리기)</h2>
+  <div class="k"><span>Y축 회전</span><b id="rotV"></b></div>
+  <input type="range" id="rot" min="0" max="360" step="1" value="0">
+  <label><input type="checkbox" id="spin">계속 돌리기</label>
+
+  <h2>뷰 행렬 (카메라 위치)</h2>
+  <div class="k"><span>카메라 z</span><b id="camV"></b></div>
+  <input type="range" id="cam" min="-15" max="-2" step="0.1" value="-5">
+
+  <h2>정점 셰이더에서 곱할 행렬</h2>
+  <label><input type="checkbox" id="mW" checked>월드</label>
+  <label><input type="checkbox" id="mV" checked>뷰</label>
+  <label><input type="checkbox" id="mP" checked>투영</label>
+
+  <h2>정점 색</h2>
+  <div class="row"><button data-col="g">모두 초록</button><button data-col="rgb">빨강·초록·파랑</button></div>
+
+  <h2>픽셀 크게 보기</h2>
+  <div class="row"><button data-pix="1">원래</button><button data-pix="8">8배</button><button data-pix="24">24배</button></div>
+
+  <div class="row" style="margin-top:10px"><button id="reset">튜토리얼 값으로</button></div>
+</div>
+<div id="say"></div>
+<button id="fs">전체 화면</button>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function () {
+  var Q = new URLSearchParams(location.search);
+  var S = {
+    order: Q.get('order') === '021' ? '021' : '012',
+    cull: Q.get('cull') !== '0',
+    rot: parseFloat(Q.get('rot')) || 0,
+    spin: Q.get('spin') === '1',
+    cam: -5, mW: true, mV: true, mP: true,
+    col: Q.get('rgb') === '1' ? 'rgb' : 'g',
+    pix: [1, 8, 24].indexOf(parseInt(Q.get('pix'), 10)) >= 0 ? parseInt(Q.get('pix'), 10) : 1
+  };
+  var DEF = { order: '012', cull: true, rot: 0, spin: false, cam: -5, mW: true, mV: true, mP: true, col: 'g', pix: 1 };
+
+  // 튜토리얼 값
+  var POS = [[-1, -1, 0], [0, 1, 0], [1, -1, 0]];
+  var FOV = Math.PI / 4, NEAR = 0.3, FAR = 1000;
+
+  var canvas = document.getElementById('c');
+  var renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: false });
+  renderer.setClearColor(0x000000, 1); // BeginScene(0, 0, 0, 1)
+  var scene = new THREE.Scene();
+  var dummyCam = new THREE.Camera(); // 행렬은 직접 넘기므로 쓰이지 않는다
+
+  var geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array([-1, -1, 0, 0, 1, 0, 1, -1, 0]), 3));
+  var colAttr = new THREE.BufferAttribute(new Float32Array(12), 4);
+  geo.setAttribute('color', colAttr);
+  geo.setIndex([0, 1, 2]);
+
+  var I4 = new THREE.Matrix4();
+  var U = { uWorld: { value: new THREE.Matrix4() }, uView: { value: new THREE.Matrix4() }, uProj: { value: new THREE.Matrix4() } };
+  // color.vs / color.ps 를 GLSL로 옮긴 것. 열 벡터라 곱하는 순서가 거꾸로 보인다.
+  var mat = new THREE.RawShaderMaterial({
+    uniforms: U, depthTest: false, side: THREE.BackSide,
+    vertexShader: [
+      'precision highp float;',
+      'attribute vec3 position; attribute vec4 color;',
+      'uniform mat4 uWorld, uView, uProj;',
+      'varying vec4 vColor; varying float vZ;',
+      'void main() {',
+      '  vec4 p = vec4(position, 1.0);',      // input.position.w = 1.0f
+      '  p = uWorld * p;',                    // mul(input.position, worldMatrix)
+      '  p = uView * p;',                     // mul(output.position, viewMatrix)
+      '  p = uProj * p;',                     // mul(output.position, projectionMatrix)
+      '  vColor = color; vZ = p.z; gl_Position = p;',
+      '}'].join('\n'),
+    fragmentShader: [
+      'precision highp float;',
+      'varying vec4 vColor; varying float vZ;',
+      'void main() { if (vZ < 0.0) discard; gl_FragColor = vColor; }' // return input.color
+    ].join('\n')
+  });
+  var mesh = new THREE.Mesh(geo, mat);
+  mesh.frustumCulled = false;
+  scene.add(mesh);
+
+  // DirectXMath 식. 행 벡터 기준 4x4를 행 순서로 적는다. Matrix4.fromArray 는 열 순서로 읽으므로 그대로 넣으면 전치가 된다(XMMatrixTranspose 와 같은 일).
+  function dxRotY(a) { var c = Math.cos(a), s = Math.sin(a); return [c, 0, -s, 0, 0, 1, 0, 0, s, 0, c, 0, 0, 0, 0, 1]; }
+  function dxView(cz) { return [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, -cz, 1]; } // 회전 없는 카메라: 위치만큼 반대로 민다
+  function dxPersp(fov, aspect, zn, zf) { var h = 1 / Math.tan(fov / 2), w = h / aspect, q = zf / (zf - zn); return [w, 0, 0, 0, 0, h, 0, 0, 0, 0, q, 1, 0, 0, -q * zn, 0]; }
+
+  var W = 1, H = 1, X0 = 0, dirty = true, pixels = 0, clipNote = '';
+  var ui = document.getElementById('ui');
+  function resize() {
+    var side = window.innerWidth >= 640;
+    document.body.classList.toggle('side', side);
+    if (side) ui.classList.remove('mini');
+    X0 = side ? 250 : 0;
+    W = Math.max(1, window.innerWidth - X0); H = Math.max(1, window.innerHeight);
+    var dpr = S.pix > 1 ? 1 / S.pix : Math.min(window.devicePixelRatio || 1, 2);
+    renderer.setPixelRatio(dpr);
+    renderer.setSize(W, H, false);
+    canvas.classList.toggle('px', S.pix > 1);
+    dirty = true;
+  }
+  addEventListener('resize', function () { resize(); apply(); });
+
+  function apply() {
+    geo.setIndex(S.order === '012' ? [0, 1, 2] : [0, 2, 1]);
+    mat.side = S.cull ? THREE.BackSide : THREE.DoubleSide;
+    var c = S.col === 'rgb' ? [1, 0, 0, 1, 0, 1, 0, 1, 0, 0, 1, 1] : [0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1];
+    colAttr.array.set(c); colAttr.needsUpdate = true;
+    U.uWorld.value.fromArray(S.mW ? dxRotY(S.rot * Math.PI / 180) : I4.elements);
+    U.uView.value.fromArray(S.mV ? dxView(S.cam) : I4.elements);
+    U.uProj.value.fromArray(S.mP ? dxPersp(FOV, W / H, NEAR, FAR) : I4.elements);
+    dirty = true;
+  }
+
+  // 화면에서 본 점 위치와 도는 방향(라벨·설명용). 셰이더와 같은 행렬을 쓴다.
+  var vl = [0, 1, 2].map(function (i) { return document.getElementById('v' + i); });
+  var ap = document.getElementById('ap');
+  function project() {
+    var pts = POS.map(function (p) {
+      var v = new THREE.Vector4(p[0], p[1], p[2], 1).applyMatrix4(U.uWorld.value).applyMatrix4(U.uView.value).applyMatrix4(U.uProj.value);
+      return { x: (v.x / v.w * 0.5 + 0.5) * W, y: (1 - (v.y / v.w * 0.5 + 0.5)) * H, z: v.z, w: v.w };
+    });
+    var behind = pts.some(function (p) { return p.w <= 0; });
+    var out = pts.filter(function (p) { return p.z < 0 || p.z > p.w; }).length;
+    clipNote = out === 3 ? 'all' : out > 0 ? 'part' : '';
+    pts.forEach(function (p, i) {
+      var show = !behind && p.x > -20 && p.x < W + 20 && p.y > -20 && p.y < H + 20;
+      vl[i].style.display = show ? 'flex' : 'none';
+      // 점 바깥쪽으로 조금 민다
+      var cx = (pts[0].x + pts[1].x + pts[2].x) / 3, cy = (pts[0].y + pts[1].y + pts[2].y) / 3, dx = p.x - cx, dy = p.y - cy, L = Math.hypot(dx, dy) || 1;
+      var lx = Math.min(W - 16, Math.max(16, p.x + dx / L * 22)), ly = Math.min(H - 16, Math.max(16, p.y + dy / L * 22));
+      vl[i].style.left = (X0 + lx) + 'px'; vl[i].style.top = ly + 'px';
+    });
+    // 인덱스 순서대로 본 화면 방향. 화면 y는 아래로 자라므로 부호 양수가 시계 방향이다.
+    var o = S.order === '012' ? [0, 1, 2] : [0, 2, 1], a = pts[o[0]], b = pts[o[1]], c = pts[o[2]];
+    var area = (b.x - a.x) * (c.y - a.y) - (c.x - a.x) * (b.y - a.y);
+    // 도는 방향 화살표: 무게중심 둘레의 작은 호
+    var cx = (a.x + b.x + c.x) / 3, cy = (a.y + b.y + c.y) / 3, r = Math.min(34, Math.sqrt(Math.abs(area)) * 0.16);
+    if (behind || r < 6) ap.setAttribute('d', '');
+    else { var cw = area > 0; ap.setAttribute('d', 'M' + (cx - r) + ' ' + cy + ' A' + r + ' ' + r + ' 0 1 ' + (cw ? 1 : 0) + ' ' + (cx + r) + ' ' + cy); }
+    return { cw: area > 0, flat: Math.abs(area) < 1 };
+  }
+
+  var say = document.getElementById('say');
+  function countPixels() {
+    var gl = renderer.getContext(), w = gl.drawingBufferWidth, h = gl.drawingBufferHeight;
+    var buf = new Uint8Array(w * h * 4); gl.readPixels(0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, buf);
+    var n = 0; for (var i = 0; i < buf.length; i += 4) if (buf[i] | buf[i + 1] | buf[i + 2]) n++;
+    return n;
+  }
+  function describe(f) {
+    var dir = f.cw ? '시계 방향' : '반시계 방향', msg;
+    if (clipNote === 'all') msg = '<b class="no">깊이 0~1 밖이라 잘려요.</b> 투영 행렬을 빼면 z가 그대로 깊이가 돼요.';
+    else if (f.flat) msg = '<b class="no">옆에서 봐서 넓이가 0이에요.</b>';
+    else if (!S.cull) msg = '화면에서 ' + dir + '이에요. <b>뒷면 버리기를 꺼서 양쪽 다 그려요.</b>';
+    else if (f.cw) msg = '화면에서 ' + dir + '이에요. <b>앞면이라 그려요.</b>';
+    else msg = '화면에서 ' + dir + '이에요. <b class="no">뒷면이라 버려요.</b>';
+    say.innerHTML = msg + '<small>DrawIndexed(3, 0, 0) · 정점 셰이더 3번 · 픽셀 셰이더 ' + pixels.toLocaleString('ko-KR') + '번</small>';
+  }
+
+  function sync() {
+    document.querySelectorAll('[data-order]').forEach(function (b) { b.classList.toggle('on', b.dataset.order === S.order); });
+    document.querySelectorAll('[data-col]').forEach(function (b) { b.classList.toggle('on', b.dataset.col === S.col); });
+    document.querySelectorAll('[data-pix]').forEach(function (b) { b.classList.toggle('on', +b.dataset.pix === S.pix); });
+    ['cull', 'spin', 'mW', 'mV', 'mP'].forEach(function (k) { document.getElementById(k).checked = S[k]; });
+    document.getElementById('rot').value = S.rot; document.getElementById('rotV').textContent = Math.round(S.rot) + '°';
+    document.getElementById('cam').value = S.cam; document.getElementById('camV').textContent = S.cam.toFixed(1);
+  }
+  function set(k, v) { S[k] = v; if (k === 'pix') resize(); apply(); sync(); }
+
+  document.querySelectorAll('[data-order]').forEach(function (b) { b.onclick = function () { set('order', b.dataset.order); }; });
+  document.querySelectorAll('[data-col]').forEach(function (b) { b.onclick = function () { set('col', b.dataset.col); }; });
+  document.querySelectorAll('[data-pix]').forEach(function (b) { b.onclick = function () { set('pix', +b.dataset.pix); }; });
+  ['cull', 'spin', 'mW', 'mV', 'mP'].forEach(function (k) { document.getElementById(k).onchange = function (e) { set(k, e.target.checked); }; });
+  document.getElementById('rot').oninput = function (e) { set('rot', +e.target.value); };
+  document.getElementById('cam').oninput = function (e) { set('cam', +e.target.value); };
+  document.getElementById('reset').onclick = function () { for (var k in DEF) S[k] = DEF[k]; resize(); apply(); sync(); };
+  document.getElementById('uiT').onclick = function () { if (!document.body.classList.contains('side')) ui.classList.toggle('mini'); };
+  if (window.innerWidth < 640) ui.classList.add('mini');
+  var fs = document.getElementById('fs');
+  fs.onclick = function () { if (document.fullscreenElement) document.exitFullscreen(); else if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen(); };
+  if (!document.documentElement.requestFullscreen) fs.style.display = 'none';
+
+  var last = performance.now(), sinceCount = 0;
+  function draw(count) {
+    renderer.render(scene, dummyCam);
+    if (count) { pixels = countPixels(); sinceCount = 0; }
+    describe(project());
+    dirty = false;
+  }
+  function frame(now) {
+    var dt = Math.min(0.1, (now - last) / 1000); last = now;
+    if (S.spin) { S.rot = (S.rot + 60 * dt) % 360; apply(); sync(); }
+    if (dirty) { sinceCount += 1; draw(!S.spin || sinceCount >= 6); }
+    requestAnimationFrame(frame);
+  }
+  resize(); apply(); sync();
+  requestAnimationFrame(frame);
+  window.__lab = { S: S, set: set, count: function () { draw(true); return pixels; } };
+})();
+</script>
+</body>
+</html>

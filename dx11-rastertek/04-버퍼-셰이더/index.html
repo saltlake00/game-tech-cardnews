@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>카드뉴스 — DX11 RasterTek 04 버퍼·셰이더·HLSL</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap">
+<style>
+html, body { margin: 0; padding: 0; background: #D9D4C8; }
+body { display: flex; flex-direction: column; align-items: center; gap: 40px; padding: 40px 0; }
+body.single { padding: 0; gap: 0; }
+body.single .slide { display: none; }
+body.single .slide.on { display: flex; }
+
+.slide {
+  width: 1080px; height: 1440px; box-sizing: border-box; flex: none;
+  padding: 60px 64px 44px; display: flex; flex-direction: column;
+  position: relative; overflow: hidden;
+  background: #F6F3EC; color: #17181C;
+  font-family: 'Noto Sans KR', 'Malgun Gothic', sans-serif;
+}
+.tag { align-self: flex-start; font-size: 26px; font-weight: 700; color: #F6F3EC; background: #17181C; border-radius: 999px; padding: 6px 22px; }
+.tag b { color: #FFD43B; margin-right: 10px; }
+.head { margin-top: 22px; font-size: 70px; font-weight: 900; line-height: 1.22; letter-spacing: -0.02em; }
+c { color: #E8590C; }
+.stage { margin-top: 28px; flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; }
+.stage svg { width: 952px; height: auto; max-height: 100%; display: block; border-radius: 28px; }
+.band { margin-top: 26px; background: #17181C; color: #F1F3F8; border-radius: 26px; padding: 30px 38px; font-size: 34px; line-height: 1.55; font-weight: 500; word-break: keep-all; }
+.band y { color: #FFD43B; font-weight: 700; }
+.band p2 { color: #FF6B9A; font-weight: 700; }
+.band small { display: block; margin-top: 10px; font-size: 24px; color: #8D94A8; }
+.foot { margin-top: 20px; display: flex; justify-content: space-between; font-size: 24px; color: #6B6A66; font-weight: 500; }
+.foot .pg { font-weight: 900; color: #17181C; }
+
+/* 표지(1장): 장면을 꽉 채우고 아래에 큰 제목. gamit·ASAP 표지 틀 */
+.slide.cover { padding: 0; background-color: #1B1F2D; color: #F6F3EC;
+  background-image: linear-gradient(#232838 2px, transparent 2px), linear-gradient(90deg, #232838 2px, transparent 2px);
+  background-size: 63.5px 63.5px; background-position: -1px -1px; }
+.cv-scene { position: absolute; left: 0; top: 230px; width: 1080px; height: auto; display: block; }
+.slide.cover::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 640px;
+  background: linear-gradient(to bottom, rgba(18,20,28,0) 0%, rgba(18,20,28,.86) 34%, #12141C 58%); }
+.cv-top { position: relative; z-index: 2; display: flex; justify-content: space-between; align-items: center; padding: 56px 64px 0; }
+.cv-brand { display: flex; align-items: center; font-size: 34px; font-weight: 900; }
+.cv-brand span { font-size: 24px; font-weight: 700; color: #B9BFCE; margin-left: 18px; padding-left: 18px; border-left: 3px solid #4A5068; letter-spacing: .04em; }
+.cv-pg { font-size: 24px; font-weight: 900; color: #17181C; background: #F6F3EC; border-radius: 999px; padding: 6px 18px; }
+.cv-game { position: relative; z-index: 2; margin: 30px 64px 0; font-size: 64px; font-weight: 900; letter-spacing: -0.01em; }
+.cv-chip { position: relative; z-index: 2; align-self: flex-start; margin: 18px 64px 0; font-size: 26px; font-weight: 700; color: #17181C; background: #F6F3EC; border-radius: 10px; padding: 6px 16px; }
+.cv-bottom { position: absolute; z-index: 2; left: 64px; right: 64px; bottom: 58px; }
+.cv-head { font-size: 92px; font-weight: 900; line-height: 1.18; letter-spacing: -0.025em; color: #FFFFFF; }
+.cv-head c { color: #3DDC84; }
+.cv-sub { margin-top: 26px; font-size: 34px; line-height: 1.5; font-weight: 500; color: #D5D9E3; }
+.cv-src { margin-top: 22px; font-size: 22px; color: #8D94A8; }
+
+.code { font-family: Consolas, 'D2Coding', monospace; font-size: 24px; line-height: 1.5; color: #C9CEDB; }
+.code .hl { display: block; background: #3A3213; color: #FFE58A; margin: 4px -14px; padding: 2px 14px; border-radius: 8px; }
+.code .c { color: #6E768C; }
+
+.nums { margin-top: 30px; flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-content: start; }
+.num { background: #FFFFFF; border: 3px solid #17181C; border-radius: 22px; padding: 24px 28px; }
+.num b { display: block; font-size: 72px; font-weight: 900; color: #E8590C; line-height: 1.1; }
+.num span { display: block; font-size: 30px; font-weight: 700; margin-top: 6px; }
+.num i { display: block; font-style: normal; font-size: 23px; color: #6B6A66; margin-top: 4px; }
+.num.wide { grid-column: 1 / 3; }
+
+.sum { margin: 30px 0 0; padding: 0; list-style: none; counter-reset: n; flex: 1; }
+.sum li { counter-increment: n; display: flex; align-items: center; gap: 22px; background: #FFFFFF; border: 3px solid #17181C; border-radius: 22px; padding: 40px 30px; margin-bottom: 24px; font-size: 38px; font-weight: 700; }
+.sum li::before { content: counter(n); flex: none; width: 56px; height: 56px; border-radius: 50%; background: #17181C; color: #FFD43B; font-weight: 900; display: flex; align-items: center; justify-content: center; }
+.sum li c { font-weight: 900; }
+.sum li i { margin-left: auto; font-style: normal; font-size: 24px; color: #6B6A66; font-weight: 500; }
+</style>
+</head>
+<body>
+
+<section class="slide cover">
+  <svg class="cv-scene" data-scene="cover"></svg>
+  <div class="cv-top">
+    <div class="cv-brand"><b>DX11 RasterTek</b><span>튜토리얼 04</span></div>
+    <div class="cv-pg pg"></div>
+  </div>
+  <div class="cv-game">버퍼 · 셰이더 · HLSL</div>
+  <div class="cv-chip">첫 삼각형 그리기</div>
+  <div class="cv-bottom">
+    <div class="cv-head">점 세 개가<br><c>픽셀</c>이 되기까지</div>
+    <div class="cv-sub">초록 삼각형 하나를 그리려고 만든 버퍼와<br>셰이더를 순서대로 따라가요.</div>
+    <div class="cv-src">자료: RasterTek DirectX 11 튜토리얼 4</div>
+  </div>
+</section>
+
+<section class="slide">
+  <div class="tag"><b>02</b>전체 흐름</div>
+  <div class="head">그리기 한 번에<br><c>여섯 단계</c>를 지나요</div>
+  <div class="stage"><svg data-scene="pipeline"></svg></div>
+  <div class="band"><y>DrawIndexed</y>를 한 번 부르면 이 길 전체가 돌아요. 정점 셰이더는 점마다, 픽셀 셰이더는 픽셀마다 한 번씩 실행돼요.</div>
+  <div class="foot"><span>DX11 RasterTek · 튜토리얼 04</span><span class="pg"></span></div>
+</section>
+
+<section class="slide">
+  <div class="tag"><b>03</b>정점 버퍼</div>
+  <div class="head">점 하나는<br><c>위치와 색</c>이에요</div>
+  <div class="stage"><svg data-scene="vbuf"></svg></div>
+  <div class="band">점 하나는 위치 숫자 3개와 색 숫자 4개, 모두 <y>28바이트</y>예요. 세 점을 배열에 담아 GPU 메모리에 올린 것이 정점 버퍼예요.</div>
+  <div class="foot"><span>ModelClass · VertexType { XMFLOAT3 position; XMFLOAT4 color; }</span><span class="pg"></span></div>
+</section>
+
+<section class="slide">
+  <div class="tag"><b>04</b>인덱스 버퍼</div>
+  <div class="head">잇는 순서가<br><c>앞뒤</c>를 정해요</div>
+  <div class="stage"><svg data-scene="winding"></svg></div>
+  <div class="band">인덱스 버퍼는 몇 번 점을 어떤 순서로 이을지 적은 목록이에요. 튜토리얼 3에서 시계 방향을 앞면으로 정했기 때문에, 반대로 적으면 <p2>뒷면으로 보고 버려요.</p2></div>
+  <div class="foot"><span>D3DClass · FrontCounterClockwise = false, CullMode = D3D11_CULL_BACK</span><span class="pg"></span></div>
+</section>
+
+<section class="slide">
+  <div class="tag"><b>05</b>정점 셰이더</div>
+  <div class="head">행렬을 <c>세 번</c><br>곱해요</div>
+  <div class="stage"><svg data-scene="matrices"></svg></div>
+  <div class="band">월드, 뷰, 투영 순서로 곱하면 모델 좌표가 화면 좌표로 바뀌어요. 카메라는 <y>(0, 0, -5)</y>에서 삼각형을 바라봐요.</div>
+  <div class="foot"><span>color.vs · 그림의 숫자는 위쪽 꼭짓점 (0, 1, 0)을 따라간 값이에요</span><span class="pg"></span></div>
+</section>
+
+<section class="slide">
+  <div class="tag"><b>06</b>픽셀 셰이더</div>
+  <div class="head">픽셀마다<br><c>색 하나</c>를 돌려줘요</div>
+  <div class="stage"><svg data-scene="raster"></svg></div>
+  <div class="band">래스터라이저가 삼각형 안쪽 픽셀을 골라내고, 세 점의 색을 섞어서 넘겨줘요. 픽셀 셰이더는 받은 색을 그대로 돌려줘요. 세 점이 모두 초록이라 <y>전부 초록</y>이에요.</div>
+  <div class="foot"><span>color.ps · return input.color;</span><span class="pg"></span></div>
+</section>
+
+<section class="slide">
+  <div class="tag"><b>07</b>주의할 곳</div>
+  <div class="head">C++과 HLSL이<br><c>서로 맞아야</c> 해요</div>
+  <div class="stage"><svg data-scene="pair"></svg></div>
+  <div class="band">입력 레이아웃이 C++ 구조체와 셰이더 입력을 이어 줘요. 저는 이름을 <p2>POISITION</p2>으로 잘못 적어서 입력 레이아웃을 만드는 데 실패했어요.</div>
+  <div class="foot"><span>ColorShaderClass · D3D11_INPUT_ELEMENT_DESC</span><span class="pg"></span></div>
+</section>
+
+<section class="slide">
+  <div class="tag"><b>08</b>정리</div>
+  <div class="head">클래스 세 개가<br><c>일을 나눠요</c></div>
+  <ol class="sum">
+    <li><c>점과 순서</c>를 버퍼에 담아요<i>ModelClass</i></li>
+    <li><c>어디서 볼지</c>를 행렬로 만들어요<i>CameraClass</i></li>
+    <li><c>셰이더</c>로 실제로 그려요<i>ColorShaderClass</i></li>
+  </ol>
+  <div class="band">튜토리얼 5는 이 구조에서 <y>색 셰이더만 텍스처 셰이더로</y> 바꿔요. 버퍼와 카메라는 그대로 써요.</div>
+  <div class="foot"><span>자료: RasterTek DirectX 11 튜토리얼 4 · rastertek.com</span><span class="pg"></span></div>
+</section>
+
+<script>
+(function () {
+  var NS = 'http://www.w3.org/2000/svg';
+  var C = { bg: '#1B1F2D', grid: '#232838', g: '#3DDC84', gd: '#1E7A49', y: '#FFD43B', p: '#FF6B9A', b: '#5B8CFF', txt: '#F1F3F8', dim: '#8D94A8', box: '#262C3F', line: '#4A5068', dark: '#12141C' };
+  var MONO = "Consolas, 'D2Coding', monospace";
+  function el(tag, a, parent, text) { var e = document.createElementNS(NS, tag); for (var k in a) e.setAttribute(k, a[k]); if (text != null) e.textContent = text; if (parent) parent.appendChild(e); return e; }
+  function base(svg, h, w) {
+    w = w || 952; svg.setAttribute('viewBox', '0 0 ' + w + ' ' + h);
+    if (w === 952) el('rect', { x: 0, y: 0, width: w, height: h, rx: 28, fill: C.bg }, svg);
+    if (w === 952) { for (var x = 56; x < w; x += 56) el('line', { x1: x, y1: 0, x2: x, y2: h, stroke: C.grid, 'stroke-width': 2 }, svg); for (var y = 56; y < h; y += 56) el('line', { x1: 0, y1: y, x2: w, y2: y, stroke: C.grid, 'stroke-width': 2 }, svg); }
+  }
+  function t(svg, x, y, s, col, size, anchor, mono, weight) { return el('text', { x: x, y: y, 'text-anchor': anchor || 'middle', 'font-size': size || 28, 'font-weight': weight || 700, fill: col || C.txt, 'font-family': mono ? MONO : 'Noto Sans KR' }, svg, s); }
+  function dot(svg, x, y, n) { el('circle', { cx: x, cy: y, r: 22, fill: C.dark, stroke: C.y, 'stroke-width': 4 }, svg); t(svg, x, y + 9, String(n), C.y, 26, 'middle', false, 900); }
+  function arrow(svg, x1, y1, x2, y2, col, dash) {
+    col = col || C.txt; var a = Math.atan2(y2 - y1, x2 - x1), L = 16;
+    el('line', { x1: x1, y1: y1, x2: x2 - Math.cos(a) * 6, y2: y2 - Math.sin(a) * 6, stroke: col, 'stroke-width': 5, 'stroke-linecap': 'round', 'stroke-dasharray': dash || '' }, svg);
+    el('path', { d: 'M' + x2 + ' ' + y2 + ' L' + (x2 - Math.cos(a - 0.5) * L) + ' ' + (y2 - Math.sin(a - 0.5) * L) + ' L' + (x2 - Math.cos(a + 0.5) * L) + ' ' + (y2 - Math.sin(a + 0.5) * L) + ' z', fill: col }, svg);
+  }
+  function tri(svg, p, fill, stroke, dash) { return el('path', { d: 'M' + p[0] + ' L' + p[1] + ' L' + p[2] + ' z', fill: fill, stroke: stroke || 'none', 'stroke-width': 5, 'stroke-linejoin': 'round', 'stroke-dasharray': dash || '' }, svg); }
+  function box(svg, x, y, w, h, title, sub, col) {
+    el('rect', { x: x, y: y, width: w, height: h, rx: 18, fill: C.box, stroke: col || C.line, 'stroke-width': 4 }, svg);
+    t(svg, x + w / 2, y + (sub ? h / 2 - 4 : h / 2 + 11), title, C.txt, 30);
+    if (sub) t(svg, x + w / 2, y + h / 2 + 32, sub, col || C.dim, 23, 'middle', false, 500);
+  }
+
+  var S = {};
+
+  // 1장 표지: 격자 위 큰 삼각형과 점 번호
+  S['cover'] = function (svg) {
+    svg.setAttribute('viewBox', '0 0 1080 640');
+    var p = [[250, 560], [540, 70], [830, 560]];
+    tri(svg, p.map(String), C.g);
+    el('path', { d: 'M250 560 L540 70 L830 560 z', fill: 'none', stroke: '#8CF5B8', 'stroke-width': 4 }, svg);
+    p.forEach(function (q, i) { dot(svg, q[0], q[1], i); });
+    t(svg, 196, 520, '(-1, -1, 0)', C.txt, 26, 'end', true);
+    t(svg, 586, 62, '(0, 1, 0)', C.txt, 26, 'start', true);
+    t(svg, 884, 520, '(1, -1, 0)', C.txt, 26, 'start', true);
+  };
+
+  // 2장: 파이프라인 여섯 단계
+  S['pipeline'] = function (svg) {
+    var h = 580; base(svg, h);
+    var w = 262, bh = 150, xs = [42, 345, 648], y1 = 70, y2 = 350;
+    box(svg, xs[0], y1, w, bh, '정점·인덱스 버퍼', '점 3개, 순서 3개', C.dim);
+    box(svg, xs[1], y1, w, bh, '입력 어셈블러', '삼각형으로 묶어요', C.dim);
+    box(svg, xs[2], y1, w, bh, '정점 셰이더', '점마다 3번', C.y);
+    box(svg, xs[0], y2, w, bh, '래스터라이저', '안쪽 픽셀을 골라요', C.dim);
+    box(svg, xs[1], y2, w, bh, '픽셀 셰이더', '픽셀마다 1번', C.y);
+    box(svg, xs[2], y2, w, bh, '출력 병합', '백 버퍼에 써요', C.dim);
+    arrow(svg, xs[0] + w + 6, y1 + bh / 2, xs[1] - 8, y1 + bh / 2);
+    arrow(svg, xs[1] + w + 6, y1 + bh / 2, xs[2] - 8, y1 + bh / 2);
+    arrow(svg, xs[0] + w + 6, y2 + bh / 2, xs[1] - 8, y2 + bh / 2);
+    arrow(svg, xs[1] + w + 6, y2 + bh / 2, xs[2] - 8, y2 + bh / 2);
+    // 윗줄 끝에서 아랫줄 처음으로
+    el('path', { d: 'M' + (xs[2] + w / 2) + ' ' + (y1 + bh + 6) + ' V' + (y1 + bh + 66) + ' H' + (xs[0] + w / 2) + ' V' + (y2 - 22), fill: 'none', stroke: C.txt, 'stroke-width': 5, 'stroke-linejoin': 'round' }, svg);
+    arrow(svg, xs[0] + w / 2, y2 - 30, xs[0] + w / 2, y2 - 8);
+    ['1', '2', '3', '4', '5', '6'].forEach(function (n, i) { var x = xs[i % 3] + 26, y = (i < 3 ? y1 : y2) - 4; el('circle', { cx: x, cy: y, r: 20, fill: C.y }, svg); t(svg, x, y + 9, n, C.dark, 24, 'middle', false, 900); });
+    t(svg, 476, 548, 'C++ 쪽에서는 DrawIndexed(3, 0, 0) 한 줄이에요', C.dim, 24, 'middle', false, 500);
+  };
+
+  // 3장: 삼각형 좌표와 정점 한 개의 메모리 모양
+  S['vbuf'] = function (svg) {
+    var h = 640; base(svg, h);
+    var p = [[316, 330], [476, 60], [636, 330]];
+    tri(svg, p.map(String), C.g);
+    p.forEach(function (q, i) { dot(svg, q[0], q[1], i); });
+    t(svg, 282, 338, '(-1, -1, 0)', C.txt, 26, 'end', true);
+    t(svg, 512, 58, '(0, 1, 0)', C.txt, 26, 'start', true);
+    t(svg, 670, 338, '(1, -1, 0)', C.txt, 26, 'start', true);
+    // 정점 한 개 = float 7칸
+    var x0 = 70, y0 = 440, cw = 116, ch = 78;
+    ['x', 'y', 'z', 'r', 'g', 'b', 'a'].forEach(function (s, i) {
+      var pos = i < 3, vals = ['0.0', '1.0', '0.0', '0.0', '1.0', '0.0', '1.0'];
+      el('rect', { x: x0 + i * cw, y: y0, width: cw - 6, height: ch, rx: 12, fill: pos ? '#2A3350' : '#1F4733', stroke: pos ? C.b : C.g, 'stroke-width': 4 }, svg);
+      t(svg, x0 + i * cw + (cw - 6) / 2, y0 + 34, s, pos ? '#A9C2FF' : '#8CF5B8', 24, 'middle', true);
+      t(svg, x0 + i * cw + (cw - 6) / 2, y0 + 64, vals[i], C.txt, 24, 'middle', true);
+    });
+    t(svg, x0, y0 - 18, '1번 점의 메모리 (float 한 칸은 4바이트)', C.txt, 26, 'start');
+    t(svg, x0 + cw * 1.5 - 3, y0 + ch + 40, '위치 12바이트', '#A9C2FF', 26);
+    t(svg, x0 + cw * 5 - 3, y0 + ch + 40, '색 16바이트', '#8CF5B8', 26);
+  };
+
+  // 4장: 시계 방향(앞면)과 반시계 방향(뒷면)
+  S['winding'] = function (svg) {
+    var h = 600; base(svg, h);
+    function one(ox, order, ok) {
+      var p = [[ox - 150, 380], [ox, 120], [ox + 150, 380]];
+      if (ok) tri(svg, p.map(String), C.g); else tri(svg, p.map(String), 'none', C.p, '14 10');
+      // 변을 따라 가는 화살표 (도형 바깥쪽으로 조금 띄운다)
+      for (var i = 0; i < 3; i++) {
+        var a = p[order[i]], b = p[order[(i + 1) % 3]], mx = (a[0] + b[0]) / 2, my = (a[1] + b[1]) / 2, dx = mx - ox, dy = my - 293, L = Math.hypot(dx, dy), nx = dx / L * 34, ny = dy / L * 34;
+        var ux = (b[0] - a[0]), uy = (b[1] - a[1]), UL = Math.hypot(ux, uy); ux /= UL; uy /= UL;
+        arrow(svg, mx + nx - ux * 52, my + ny - uy * 52, mx + nx + ux * 52, my + ny + uy * 52, ok ? C.y : C.p);
+      }
+      p.forEach(function (q, i) { dot(svg, q[0], q[1], i); });
+      t(svg, ox, 60, 'indices = { ' + order.join(', ') + ' }', C.txt, 28, 'middle', true);
+      t(svg, ox, 478, ok ? '시계 방향' : '반시계 방향', ok ? C.y : C.p, 34, 'middle', false, 900);
+      t(svg, ox, 526, ok ? '앞면이라 그려요' : '뒷면이라 버려요', C.txt, 28, 'middle', false, 500);
+    }
+    one(250, [0, 1, 2], true);
+    one(702, [0, 2, 1], false);
+    el('line', { x1: 476, y1: 40, x2: 476, y2: 560, stroke: C.line, 'stroke-width': 3, 'stroke-dasharray': '8 10' }, svg);
+  };
+
+  // 5장: 위쪽 꼭짓점 좌표가 행렬 세 번을 지나며 바뀌는 과정
+  S['matrices'] = function (svg) {
+    var h = 600; base(svg, h);
+    var rows = [
+      ['모델 좌표', '(0, 1, 0)', '정점 버퍼에 적은 값', C.dim],
+      ['월드 좌표', '(0, 1, 0)', '× world (단위 행렬이라 그대로)', C.y],
+      ['카메라 기준', '(0, 1, 5)', '× view (카메라가 z = -5)', C.y],
+      ['화면 좌표', '(0, 0.48)', '× projection (시야각 45도), w로 나눔', C.y]
+    ];
+    var x = 56, w = 840, bh = 104, gap = 34, y = 36;
+    rows.forEach(function (r, i) {
+      var yy = y + i * (bh + gap);
+      el('rect', { x: x, y: yy, width: w, height: bh, rx: 18, fill: C.box, stroke: i ? C.line : C.dim, 'stroke-width': 4 }, svg);
+      t(svg, x + 30, yy + 46, r[0], C.txt, 30, 'start');
+      t(svg, x + 30, yy + 84, r[2], r[3], 23, 'start', false, 500);
+      t(svg, x + w - 30, yy + 66, r[1], i === 3 ? C.g : C.txt, 40, 'end', true);
+      if (i < 3) arrow(svg, 476, yy + bh + 4, 476, yy + bh + gap - 4, C.y);
+    });
+  };
+
+  // 6장: 삼각형이 픽셀 칸으로 바뀌는 그림
+  S['raster'] = function (svg) {
+    var h = 620; base(svg, h);
+    var cols = 19, rowsN = 12, cs = 42, x0 = (952 - cols * cs) / 2, y0 = 58;
+    var A = [x0 + 2.2 * cs, y0 + 10.6 * cs], B = [x0 + 9.5 * cs, y0 + 0.9 * cs], Cc = [x0 + 16.8 * cs, y0 + 10.6 * cs];
+    function inside(px, py) { function s(a, b) { return (b[0] - a[0]) * (py - a[1]) - (b[1] - a[1]) * (px - a[0]); } var d1 = s(A, B), d2 = s(B, Cc), d3 = s(Cc, A); return (d1 >= 0 && d2 >= 0 && d3 >= 0) || (d1 <= 0 && d2 <= 0 && d3 <= 0); }
+    el('rect', { x: x0, y: y0, width: cols * cs, height: rowsN * cs, fill: '#000' }, svg);
+    for (var r = 0; r < rowsN; r++) for (var c = 0; c < cols; c++) {
+      var cx = x0 + (c + 0.5) * cs, cy = y0 + (r + 0.5) * cs, on = inside(cx, cy);
+      el('rect', { x: x0 + c * cs + 2, y: y0 + r * cs + 2, width: cs - 4, height: cs - 4, rx: 4, fill: on ? C.g : '#151925' }, svg);
+      el('circle', { cx: cx, cy: cy, r: 3, fill: on ? C.gd : '#3A4057' }, svg);
+    }
+    tri(svg, [A, B, Cc].map(String), 'none', C.y, '12 9');
+    t(svg, 476, y0 + rowsN * cs + 44, '칸 가운데 점이 삼각형 안에 있으면 그 픽셀을 칠해요', C.txt, 26, 'middle', false, 500);
+  };
+
+  // 7장: C++ 구조체 ↔ 입력 레이아웃 ↔ HLSL 입력
+  S['pair'] = function (svg) {
+    var h = 600; base(svg, h);
+    function card(y, title, l1, l2, col) {
+      el('rect', { x: 50, y: y, width: 852, height: 150, rx: 18, fill: C.box, stroke: col, 'stroke-width': 4 }, svg);
+      t(svg, 78, y + 40, title, col, 24, 'start');
+      t(svg, 78, y + 86, l1, C.txt, 28, 'start', true);
+      t(svg, 78, y + 126, l2, C.txt, 28, 'start', true);
+    }
+    card(30, 'C++ 구조체 (ModelClass.h)', 'XMFLOAT3 position;', 'XMFLOAT4 color;', C.b);
+    card(225, '입력 레이아웃 (ColorShaderClass.cpp)', '"POSITION"  R32G32B32_FLOAT', '"COLOR"     R32G32B32A32_FLOAT', C.y);
+    card(420, 'HLSL 입력 (color.vs)', 'float4 position : POSITION;', 'float4 color : COLOR;', C.g);
+    arrow(svg, 476, 184, 476, 219, C.y); arrow(svg, 476, 219, 476, 184, C.y);
+    arrow(svg, 476, 379, 476, 414, C.y); arrow(svg, 476, 414, 476, 379, C.y);
+    t(svg, 510, 211, '크기와 순서', C.dim, 24, 'start', false, 500);
+    t(svg, 510, 406, '이름(시맨틱)', C.dim, 24, 'start', false, 500);
+  };
+
+  document.querySelectorAll('svg[data-scene]').forEach(function (svg) { S[svg.dataset.scene](svg); });
+
+  var slides = document.querySelectorAll('.slide');
+  slides.forEach(function (s, i) { var pg = s.querySelector('.pg'); if (pg) pg.textContent = String(i + 1).padStart(2,'0') + ' / ' + String(slides.length).padStart(2,'0'); });
+  var n = parseInt(location.hash.slice(1), 10);
+  if (n && slides[n - 1]) { document.body.classList.add('single'); slides[n - 1].classList.add('on'); }
+})();
+</script>
+</body>
+</html>
